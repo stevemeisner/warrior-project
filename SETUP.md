@@ -1,0 +1,348 @@
+# Warrior Project Setup Guide
+
+This guide covers local development setup and production deployment for the Warrior Project.
+
+## Prerequisites
+
+- **Node.js 22+** (via [MISE](https://mise.jdx.dev/), nvm, or direct install)
+- **npm** (comes with Node.js)
+- **Convex account** - Free at [convex.dev](https://convex.dev)
+- **Google Cloud Console account** - For OAuth authentication
+
+### Optional Services
+
+- **Mapbox account** - For map features ([mapbox.com](https://www.mapbox.com/))
+- **Resend account** - For email notifications ([resend.com](https://resend.com))
+
+---
+
+## Note for MISE Users
+
+MISE doesn't automatically add Node.js to your PATH. You have two options:
+
+### Option 1: Activate MISE in your shell (Recommended)
+
+Add to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.):
+
+```bash
+eval "$(mise activate bash)"   # for bash
+eval "$(mise activate zsh)"    # for zsh
+```
+
+Then restart your terminal or run `source ~/.zshrc`.
+
+### Option 2: Use mise exec for commands
+
+Prefix commands with `mise exec`:
+
+```bash
+mise exec node@22 -- npm install
+mise exec node@22 -- npx convex dev
+```
+
+---
+
+## Local Development Setup
+
+### 1. Clone and Install Dependencies
+
+```bash
+git clone <repository-url>
+cd warrior-project
+npm install
+```
+
+### 2. Initialize Convex
+
+Run the Convex development server. This will prompt you to log in and create a new project:
+
+```bash
+npx convex dev
+```
+
+On first run, Convex will:
+- Open a browser for authentication
+- Ask you to create or select a project
+- Automatically populate `NEXT_PUBLIC_CONVEX_URL` in `.env.local`
+
+Keep this terminal running during development.
+
+### 3. Set Up Google OAuth Credentials
+
+See the [Google OAuth Setup](#google-oauth-setup) section below for detailed instructions.
+
+### 4. Configure Convex Environment Variables
+
+Go to the [Convex Dashboard](https://dashboard.convex.dev):
+
+1. Select your project
+2. Navigate to **Settings** → **Environment Variables**
+3. Add the following variables:
+
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `SITE_URL` | `http://localhost:3000` | Your app URL for OAuth redirects |
+| `AUTH_GOOGLE_ID` | `your-client-id.apps.googleusercontent.com` | From Google Cloud Console |
+| `AUTH_GOOGLE_SECRET` | `your-client-secret` | From Google Cloud Console |
+| `RESEND_API_KEY` | `re_xxxxxxxx` | (Optional) For email notifications |
+
+### 5. Run the Development Server
+
+In a new terminal:
+
+```bash
+npm run dev
+```
+
+This runs both Next.js and Convex in parallel. Your app will be available at [http://localhost:3000](http://localhost:3000).
+
+---
+
+## Environment Variables Reference
+
+### Next.js (.env.local)
+
+These variables are used by the Next.js frontend:
+
+```bash
+# Required - Convex deployment URL (auto-populated by `npx convex dev`)
+NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
+
+# Required - Your app URL
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Optional - Mapbox token for map features
+NEXT_PUBLIC_MAPBOX_TOKEN=pk.xxxxx
+```
+
+### Convex Dashboard
+
+These variables must be set in the Convex Dashboard (not in `.env.local`):
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SITE_URL` | Yes | App URL for OAuth redirects |
+| `AUTH_GOOGLE_ID` | Yes | Google OAuth Client ID |
+| `AUTH_GOOGLE_SECRET` | Yes | Google OAuth Client Secret |
+| `RESEND_API_KEY` | No | Resend API key for emails |
+
+---
+
+## Google OAuth Setup
+
+### 1. Create a Google Cloud Project
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Note your project ID
+
+### 2. Configure OAuth Consent Screen
+
+1. Navigate to **APIs & Services** → **OAuth consent screen**
+2. Select **External** user type (unless you have Google Workspace)
+3. Fill in the required fields:
+   - App name: `Warrior Project` (or your preferred name)
+   - User support email: Your email
+   - Developer contact: Your email
+4. Click **Save and Continue**
+5. Skip scopes for now (default email/profile are sufficient)
+6. Add test users if in testing mode
+7. Complete the setup
+
+### 3. Create OAuth Credentials
+
+1. Navigate to **APIs & Services** → **Credentials**
+2. Click **Create Credentials** → **OAuth client ID**
+3. Select **Web application**
+4. Name it (e.g., "Warrior Project Dev")
+5. Add **Authorized redirect URIs**:
+
+**For local development:**
+```
+https://your-dev-deployment.convex.site/api/auth/callback/google
+```
+
+**For production:**
+```
+https://your-prod-deployment.convex.site/api/auth/callback/google
+```
+
+To find your Convex site URL:
+- Development: Check the output of `npx convex dev` or visit the Convex Dashboard
+- Production: Run `npx convex deploy` and note the URL
+
+6. Click **Create**
+7. Copy the **Client ID** and **Client Secret**
+
+### 4. Add Credentials to Convex
+
+Add `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` to your Convex environment variables (see step 4 in Local Development Setup).
+
+---
+
+## Production Deployment
+
+### Convex Deployment
+
+1. **Deploy to production:**
+
+```bash
+npx convex deploy
+```
+
+This will:
+- Create a production deployment (separate from development)
+- Push your functions and schema to production
+
+2. **Set production environment variables:**
+
+Go to the [Convex Dashboard](https://dashboard.convex.dev):
+- Select your production deployment
+- Navigate to **Settings** → **Environment Variables**
+- Add the same variables as development, but with production values:
+
+| Variable | Production Value |
+|----------|-----------------|
+| `SITE_URL` | `https://your-domain.com` |
+| `AUTH_GOOGLE_ID` | Same or separate OAuth credentials |
+| `AUTH_GOOGLE_SECRET` | Same or separate OAuth credentials |
+| `RESEND_API_KEY` | Your production Resend key |
+
+3. **Update Google OAuth redirect URIs:**
+
+Add your production Convex site URL to Google Cloud Console:
+```
+https://your-prod-deployment.convex.site/api/auth/callback/google
+```
+
+### Vercel Deployment
+
+1. **Connect your repository:**
+   - Go to [Vercel](https://vercel.com)
+   - Import your GitHub repository
+   - Select the `warrior-project` directory if in a monorepo
+
+2. **Configure environment variables:**
+
+In Vercel project settings → Environment Variables:
+
+| Variable | Value |
+|----------|-------|
+| `NEXT_PUBLIC_CONVEX_URL` | Your production Convex URL |
+| `NEXT_PUBLIC_APP_URL` | `https://your-domain.com` |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | (Optional) Your Mapbox token |
+| `CONVEX_DEPLOY_KEY` | From Convex Dashboard → Settings → Deploy Keys |
+
+3. **Configure build settings:**
+
+The default settings should work, but verify:
+- **Build Command:** `npm run build`
+- **Output Directory:** `.next`
+- **Install Command:** `npm install`
+
+4. **Deploy:**
+
+Vercel will automatically deploy on push to your main branch. For the initial deployment, you may need to trigger a manual deploy after setting environment variables.
+
+---
+
+## Troubleshooting
+
+### `npx: command not found` (MISE users)
+
+If you're using MISE and npx isn't found:
+
+```bash
+# Option 1: Activate MISE
+eval "$(mise activate zsh)"  # or bash
+
+# Option 2: Use mise exec
+mise exec node@22 -- npx convex dev
+```
+
+### OAuth Redirect Errors
+
+**"redirect_uri_mismatch" error:**
+- Verify the redirect URI in Google Cloud Console matches exactly
+- Check that you're using the Convex site URL (`.convex.site`), not the cloud URL (`.convex.cloud`)
+- Ensure `SITE_URL` in Convex matches your actual app URL
+
+**"Access blocked: This app's request is invalid":**
+- Ensure OAuth consent screen is configured
+- Add your email as a test user if the app is in testing mode
+
+### Convex Connection Issues
+
+**"Could not connect to Convex":**
+- Verify `NEXT_PUBLIC_CONVEX_URL` is set in `.env.local`
+- Check that `npx convex dev` is running for development
+- For production, verify the URL points to your production deployment
+
+### Environment Variables Not Working
+
+**Convex variables:**
+- Must be set in the Convex Dashboard, not `.env.local`
+- Changes take effect immediately (no redeploy needed)
+
+**Next.js variables:**
+- Must start with `NEXT_PUBLIC_` to be available in the browser
+- Requires server restart after changes
+- For Vercel, redeploy after adding/changing variables
+
+### Build Failures on Vercel
+
+**"convex deploy" fails:**
+- Ensure `CONVEX_DEPLOY_KEY` is set in Vercel environment variables
+- Generate a deploy key from Convex Dashboard → Settings → Deploy Keys
+
+---
+
+## Development Workflow
+
+### Daily Development
+
+```bash
+# Terminal 1: Start development servers
+npm run dev
+
+# This runs both Next.js and Convex dev servers in parallel
+```
+
+### Deploying Changes
+
+```bash
+# Deploy to production (Convex + Next.js build)
+npm run build
+
+# Or deploy Convex only
+npx convex deploy
+```
+
+### Useful Commands
+
+```bash
+# Start development
+npm run dev
+
+# Start only Next.js
+npm run dev:next
+
+# Start only Convex
+npm run dev:convex
+
+# Build for production
+npm run build
+
+# Run linter
+npm run lint
+```
+
+---
+
+## Architecture Overview
+
+- **Frontend:** Next.js 16 with React 19 and Tailwind CSS 4
+- **Backend:** Convex (serverless functions + database)
+- **Authentication:** Convex Auth with Google OAuth and email/password
+- **Email:** Resend (optional)
+- **Maps:** Mapbox GL JS (optional)
