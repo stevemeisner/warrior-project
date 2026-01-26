@@ -3,6 +3,18 @@ import { mutation, query } from "./_generated/server";
 import { auth } from "./auth";
 import { accountRoles, authProviders, visibilitySettings } from "./schema";
 
+// Get auth user info (for Google OAuth onboarding)
+export const getAuthUserInfo = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) return null;
+    // Query the auth users table for email/name
+    const user = await ctx.db.get(userId);
+    return user;
+  },
+});
+
 // Get the currently authenticated user's account
 export const getCurrentAccount = query({
   args: {},

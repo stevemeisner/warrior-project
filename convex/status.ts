@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { auth } from "./auth";
 import { statusValues, visibilitySettings } from "./schema";
 
@@ -73,8 +74,23 @@ export const updateStatus = mutation({
       updatedAt: now,
     });
 
-    // TODO: Create notifications for followers/connections
-    // TODO: Send email notifications based on user preferences
+    // Create notifications for caregivers who follow this warrior
+    const caregiverRelations = await ctx.db
+      .query("caregivers")
+      .withIndex("by_account", (q) => q.eq("accountId", warrior.accountId))
+      .filter((q) => q.eq(q.field("inviteStatus"), "accepted"))
+      .collect();
+
+    for (const relation of caregiverRelations) {
+      await ctx.runMutation(internal.notifications.createNotification, {
+        accountId: relation.caregiverAccountId,
+        type: "statusChange",
+        title: "Status update",
+        message: `${warrior.name}'s status changed to ${args.status}`,
+        relatedAccountId: account._id,
+        relatedWarriorId: args.warriorId,
+      });
+    }
 
     return statusUpdateId;
   },

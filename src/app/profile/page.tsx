@@ -45,10 +45,28 @@ function ProfileContent() {
     }
   };
 
-  if (!account) {
+  // Loading state
+  if (account === undefined) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <p>Loading...</p>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // No account
+  if (account === null) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">Account not found</p>
+          <Link href="/signup">
+            <Button>Sign Up</Button>
+          </Link>
+        </div>
       </div>
     );
   }

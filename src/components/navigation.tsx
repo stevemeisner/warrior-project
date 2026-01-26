@@ -40,9 +40,9 @@ function AuthenticatedNav() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center">
+      <div className="container mx-auto flex h-14 items-center px-4">
         <Link href="/dashboard" className="flex items-center gap-2 mr-6">
-          <span className="text-xl">🪶</span>
+          <span className="text-xl">🛡️</span>
           <span className="font-bold text-lg">Warrior Project</span>
         </Link>
 
@@ -136,9 +136,9 @@ function UnauthenticatedNav() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center justify-between">
+      <div className="container mx-auto flex h-14 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2">
-          <span className="text-xl">🪶</span>
+          <span className="text-xl">🛡️</span>
           <span className="font-bold text-lg">Warrior Project</span>
         </Link>
 

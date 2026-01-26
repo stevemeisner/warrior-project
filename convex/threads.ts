@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { auth } from "./auth";
 import { threadCategories } from "./schema";
 
@@ -301,7 +302,17 @@ export const addComment = mutation({
       updatedAt: now,
     });
 
-    // TODO: Create notification for thread author
+    // Create notification for thread author (if not the same as commenter)
+    if (thread.authorId !== account._id) {
+      await ctx.runMutation(internal.notifications.createNotification, {
+        accountId: thread.authorId,
+        type: "threadReply",
+        title: "New comment on your thread",
+        message: `${account.name} commented on "${thread.title}"`,
+        relatedAccountId: account._id,
+        relatedThreadId: args.threadId,
+      });
+    }
 
     return commentId;
   },

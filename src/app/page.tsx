@@ -8,7 +8,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="py-20 px-4 text-center bg-gradient-to-b from-primary/5 to-background">
         <div className="container mx-auto max-w-4xl">
-          <span className="text-6xl mb-6 block">🪶</span>
+          <span className="text-6xl mb-6 block">🛡️</span>
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             Welcome to the Warrior Project
           </h1>

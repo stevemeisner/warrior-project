@@ -1,5 +1,7 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { api } from "./_generated/api";
 import { auth } from "./auth";
 import { permissionLevels } from "./schema";
 
@@ -185,7 +187,23 @@ export const inviteCaregiver = mutation({
       invitedAt: Date.now(),
     });
 
-    // TODO: Send email notification via Resend
+    // If caregiver already has an account, create in-app notification
+    if (caregiverAccount) {
+      await ctx.runMutation(internal.notifications.createNotification, {
+        accountId: caregiverAccount._id,
+        type: "caregiverInvite",
+        title: "Caregiver invitation",
+        message: `${account.name} has invited you to be a caregiver`,
+        relatedAccountId: account._id,
+      });
+    }
+
+    // Schedule email notification (runs asynchronously)
+    await ctx.scheduler.runAfter(0, internal.email.sendCaregiverInviteEmail, {
+      toEmail: args.email,
+      inviterName: account.name,
+      permissions: args.permissions,
+    });
 
     return caregiverId;
   },

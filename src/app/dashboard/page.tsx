@@ -31,11 +31,25 @@ function DashboardContent() {
     }
   };
 
-  if (!account) {
+  // Loading state (query in flight)
+  if (account === undefined) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading your account...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // No account exists - redirect to onboarding
+  if (account === null) {
+    router.push("/onboarding");
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <p className="text-muted-foreground">Setting up your account...</p>
         </div>
       </div>
     );
@@ -63,27 +77,41 @@ function DashboardContent() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{warriors?.length || 0}</div>
+            {warriors === undefined ? (
+              <div className="h-8 w-12 bg-muted animate-pulse rounded"></div>
+            ) : (
+              <div className="text-2xl font-bold">{warriors.length}</div>
+            )}
             <p className="text-sm text-muted-foreground">Warriors</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{unreadMessages || 0}</div>
+            {unreadMessages === undefined ? (
+              <div className="h-8 w-12 bg-muted animate-pulse rounded"></div>
+            ) : (
+              <div className="text-2xl font-bold">{unreadMessages}</div>
+            )}
             <p className="text-sm text-muted-foreground">Unread Messages</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{notifications || 0}</div>
+            {notifications === undefined ? (
+              <div className="h-8 w-12 bg-muted animate-pulse rounded"></div>
+            ) : (
+              <div className="text-2xl font-bold">{notifications}</div>
+            )}
             <p className="text-sm text-muted-foreground">Notifications</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">
-              {recentUpdates?.length || 0}
-            </div>
+            {recentUpdates === undefined ? (
+              <div className="h-8 w-12 bg-muted animate-pulse rounded"></div>
+            ) : (
+              <div className="text-2xl font-bold">{recentUpdates.length}</div>
+            )}
             <p className="text-sm text-muted-foreground">Recent Updates</p>
           </CardContent>
         </Card>

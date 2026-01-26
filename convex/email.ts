@@ -1,4 +1,4 @@
-import { action } from "./_generated/server";
+import { action, internalAction } from "./_generated/server";
 import { v } from "convex/values";
 
 // Email templates
@@ -175,6 +175,52 @@ export const sendEmail = action({
       return { success: true };
     } catch (error) {
       console.error("Email error:", error);
+      return { success: false, error: String(error) };
+    }
+  },
+});
+
+// Internal action for caregiver invite emails (called via scheduler)
+export const sendCaregiverInviteEmail = internalAction({
+  args: {
+    toEmail: v.string(),
+    inviterName: v.string(),
+    permissions: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      console.warn("RESEND_API_KEY not set, skipping caregiver invite email");
+      return { success: false, error: "API key not configured" };
+    }
+
+    const emailContent = emailTemplates.caregiverInvite(args.inviterName, args.permissions);
+
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "Warrior Project <noreply@warriorproject.com>",
+          to: args.toEmail,
+          subject: emailContent.subject,
+          html: emailContent.html,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("Failed to send caregiver invite email:", error);
+        return { success: false, error };
+      }
+
+      console.log(`Caregiver invite email sent to ${args.toEmail}`);
+      return { success: true };
+    } catch (error) {
+      console.error("Caregiver invite email error:", error);
       return { success: false, error: String(error) };
     }
   },

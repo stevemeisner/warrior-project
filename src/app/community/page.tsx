@@ -214,7 +214,14 @@ function CommunityContent() {
       <div className="grid md:grid-cols-2 gap-6">
         {/* Thread List */}
         <div className="space-y-4">
-          {threads && threads.length > 0 ? (
+          {threads === undefined ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading discussions...</p>
+              </div>
+            </div>
+          ) : threads.length > 0 ? (
             threads.map((thread) => (
               <Card
                 key={thread._id}

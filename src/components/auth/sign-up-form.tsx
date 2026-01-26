@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,7 +37,9 @@ const roleOptions: RoleOption[] = [
 ];
 
 export function SignUpForm() {
+  const router = useRouter();
   const { signIn } = useAuthActions();
+  const createAccount = useMutation(api.accounts.createAccount);
   const [step, setStep] = useState<"role" | "details">("role");
   const [role, setRole] = useState<AccountRole | null>(null);
   const [name, setName] = useState("");
@@ -73,6 +78,25 @@ export function SignUpForm() {
         role,
         flow: "signUp",
       });
+
+      // Create the account record after successful signup
+      try {
+        await createAccount({
+          email,
+          name,
+          role: role!,
+          authProvider: "email",
+        });
+      } catch (accountErr) {
+        // Account may already exist (created by callback), ignore this error
+        const errMessage = accountErr instanceof Error ? accountErr.message : "";
+        if (!errMessage.includes("already exists")) {
+          console.error("Failed to create account record:", accountErr);
+        }
+      }
+
+      // Redirect to dashboard after successful signup
+      router.push("/dashboard");
     } catch (err) {
       setError("Failed to create account. This email may already be registered.");
     } finally {

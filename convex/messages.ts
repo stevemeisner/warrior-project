@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { auth } from "./auth";
 
 // Get all conversations for the current user
@@ -298,8 +299,19 @@ export const sendMessage = mutation({
       lastMessageAt: now,
     });
 
-    // TODO: Create notifications for other participants
-    // TODO: Send email notifications based on preferences
+    // Create notifications for other participants
+    for (const participantId of conversation.participants) {
+      if (participantId !== account._id) {
+        await ctx.runMutation(internal.notifications.createNotification, {
+          accountId: participantId,
+          type: "newMessage",
+          title: "New message",
+          message: `${account.name} sent you a message`,
+          relatedAccountId: account._id,
+          relatedConversationId: args.conversationId,
+        });
+      }
+    }
 
     return messageId;
   },
