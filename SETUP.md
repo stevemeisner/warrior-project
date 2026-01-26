@@ -248,25 +248,35 @@ https://your-prod-deployment.convex.site/api/auth/callback/google
    - Import your GitHub repository
    - Select the `warrior-project` directory if in a monorepo
 
-2. **Configure environment variables:**
+2. **Generate a Convex Deploy Key (Required):**
 
-In Vercel project settings → Environment Variables:
+   The build process runs `convex deploy` which requires authentication. Without this key, the build will fail.
 
-| Variable | Value |
-|----------|-------|
-| `NEXT_PUBLIC_CONVEX_URL` | Your production Convex URL |
-| `NEXT_PUBLIC_APP_URL` | `https://your-domain.com` |
-| `NEXT_PUBLIC_MAPBOX_TOKEN` | (Optional) Your Mapbox token |
-| `CONVEX_DEPLOY_KEY` | From Convex Dashboard → Settings → Deploy Keys |
+   1. Go to [Convex Dashboard](https://dashboard.convex.dev)
+   2. Select your **production** deployment
+   3. Navigate to **Settings** → **Deploy Keys**
+   4. Click **Generate Deploy Key**
+   5. Copy the key (you won't be able to see it again)
 
-3. **Configure build settings:**
+3. **Configure environment variables:**
+
+In Vercel project settings → Environment Variables, add:
+
+| Variable | Required | Value |
+|----------|----------|-------|
+| `CONVEX_DEPLOY_KEY` | **Yes** | The deploy key from step 2 |
+| `NEXT_PUBLIC_CONVEX_URL` | Yes | Your production Convex URL (e.g., `https://xxx.convex.cloud`) |
+| `NEXT_PUBLIC_APP_URL` | Yes | `https://your-domain.com` |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | No | Your Mapbox token |
+
+4. **Configure build settings:**
 
 The default settings should work, but verify:
 - **Build Command:** `npm run build`
 - **Output Directory:** `.next`
 - **Install Command:** `npm install`
 
-4. **Deploy:**
+5. **Deploy:**
 
 Vercel will automatically deploy on push to your main branch. For the initial deployment, you may need to trigger a manual deploy after setting environment variables.
 
@@ -317,9 +327,18 @@ mise exec node@22 -- npx convex dev
 
 ### Build Failures on Vercel
 
-**"convex deploy" fails:**
-- Ensure `CONVEX_DEPLOY_KEY` is set in Vercel environment variables
-- Generate a deploy key from Convex Dashboard → Settings → Deploy Keys
+**"Vercel build environment detected but no Convex deployment configuration found":**
+
+This error means `CONVEX_DEPLOY_KEY` is missing from your Vercel environment variables.
+
+1. Go to [Convex Dashboard](https://dashboard.convex.dev) → your production deployment → **Settings** → **Deploy Keys**
+2. Generate a new deploy key
+3. Add it to Vercel: Project Settings → Environment Variables → Add `CONVEX_DEPLOY_KEY`
+4. Redeploy
+
+**"convex deploy" fails for other reasons:**
+- Verify the deploy key hasn't been revoked
+- Check that schema and functions are valid by running `npx convex deploy` locally first
 
 ---
 
