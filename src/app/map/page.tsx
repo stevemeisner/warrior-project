@@ -1,17 +1,24 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { StatusBadge, WarriorStatus } from "@/components/status-selector";
+import { MapWarriorListPanel } from "@/components/map-warrior-list-panel";
+
+interface ViewportBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
 
 // Note: In production, use environment variable
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -22,11 +29,40 @@ function MapContent() {
   const [selectedWarrior, setSelectedWarrior] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState<WarriorStatus | "all">("all");
   const [mapReady, setMapReady] = useState(false);
+  const [viewportBounds, setViewportBounds] = useState<ViewportBounds | null>(null);
 
   const warriors = useQuery(api.warriors.getPublicWarriors, {
     status: statusFilter === "all" ? undefined : statusFilter,
     limit: 100,
   });
+
+  // Filter warriors by current viewport
+  const warriorsInView = useMemo(() => {
+    if (!warriors || !viewportBounds) return [];
+    return warriors.filter((warrior) => {
+      const loc = warrior.account?.location;
+      if (!loc?.latitude || !loc?.longitude) return false;
+      return (
+        loc.latitude >= viewportBounds.south &&
+        loc.latitude <= viewportBounds.north &&
+        loc.longitude >= viewportBounds.west &&
+        loc.longitude <= viewportBounds.east
+      );
+    });
+  }, [warriors, viewportBounds]);
+
+  // Handle clicking a warrior in the list panel
+  const handleWarriorListClick = (warrior: any) => {
+    const loc = warrior.account?.location;
+    if (!loc?.longitude || !loc?.latitude || !map.current) return;
+
+    map.current.flyTo({
+      center: [loc.longitude, loc.latitude],
+      zoom: 12,
+      duration: 1500,
+    });
+    setSelectedWarrior(warrior);
+  };
 
   // Initialize map
   useEffect(() => {
@@ -46,6 +82,25 @@ function MapContent() {
 
     map.current.on("load", () => {
       setMapReady(true);
+      // Set initial viewport bounds
+      const bounds = map.current!.getBounds();
+      setViewportBounds({
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        west: bounds.getWest(),
+      });
+    });
+
+    // Update viewport bounds when map is panned/zoomed
+    map.current.on("moveend", () => {
+      const bounds = map.current!.getBounds();
+      setViewportBounds({
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        west: bounds.getWest(),
+      });
     });
 
     // Add navigation controls
@@ -149,7 +204,7 @@ function MapContent() {
   return (
     <div className="h-[calc(100vh-56px)] relative">
       {/* Filter Bar */}
-      <div className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg p-2 flex flex-wrap gap-2">
+      <div className="absolute top-4 left-4 right-4 md:left-4 md:right-auto z-10 bg-white rounded-lg shadow-lg p-2 flex flex-wrap gap-2">
         {statusOptions.map((option) => (
           <Button
             key={option.value}
@@ -164,6 +219,14 @@ function MapContent() {
           </Button>
         ))}
       </div>
+
+      {/* Warrior List Panel */}
+      <MapWarriorListPanel
+        warriors={warriorsInView}
+        selectedWarriorId={selectedWarrior?._id}
+        onWarriorClick={handleWarriorListClick}
+        className="absolute top-20 left-4 z-10 max-h-[calc(100vh-200px)]"
+      />
 
       {/* Map Container */}
       <div ref={mapContainer} className="w-full h-full" />
@@ -192,7 +255,7 @@ function MapContent() {
 
       {/* Warrior Preview Card */}
       {selectedWarrior && (
-        <div className="absolute bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-10">
+        <div className="absolute bottom-20 left-4 right-4 md:bottom-4 md:left-auto md:right-4 md:w-80 z-10">
           <Card>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
