@@ -83,24 +83,28 @@ function MapContent() {
     map.current.on("load", () => {
       setMapReady(true);
       // Set initial viewport bounds
-      const bounds = map.current!.getBounds();
-      setViewportBounds({
-        north: bounds.getNorth(),
-        south: bounds.getSouth(),
-        east: bounds.getEast(),
-        west: bounds.getWest(),
-      });
+      const bounds = map.current?.getBounds();
+      if (bounds) {
+        setViewportBounds({
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+        });
+      }
     });
 
     // Update viewport bounds when map is panned/zoomed
     map.current.on("moveend", () => {
-      const bounds = map.current!.getBounds();
-      setViewportBounds({
-        north: bounds.getNorth(),
-        south: bounds.getSouth(),
-        east: bounds.getEast(),
-        west: bounds.getWest(),
-      });
+      const bounds = map.current?.getBounds();
+      if (bounds) {
+        setViewportBounds({
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+        });
+      }
     });
 
     // Add navigation controls
