@@ -31,22 +31,71 @@ export const getCurrentAccount = query({
   },
 });
 
-// Get an account by ID
+// Get an account by ID (returns public fields only for other users)
 export const getAccount = query({
   args: { accountId: v.id("accounts") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.accountId);
+    const userId = await auth.getUserId(ctx);
+
+    const account = await ctx.db.get(args.accountId);
+    if (!account) return null;
+
+    // If viewing own account, return all fields
+    if (userId) {
+      const viewerAccount = await ctx.db
+        .query("accounts")
+        .withIndex("by_authId", (q) => q.eq("authId", userId))
+        .first();
+
+      if (viewerAccount?._id === account._id) {
+        return account;
+      }
+    }
+
+    // For other users, return only public profile fields
+    return {
+      _id: account._id,
+      name: account.name,
+      role: account.role,
+      profilePhoto: account.profilePhoto,
+      location: account.privacySettings?.showLocation ? account.location : undefined,
+      createdAt: account.createdAt,
+      // Exclude: email, authId, authProvider, privacySettings, notificationPreferences
+    };
   },
 });
 
-// Get an account by email
+// Get an account by email (authenticated users only, returns public fields for others)
 export const getAccountByEmail = query({
   args: { email: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const userId = await auth.getUserId(ctx);
+    if (!userId) return null; // Require authentication
+
+    const account = await ctx.db
       .query("accounts")
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .first();
+
+    if (!account) return null;
+
+    // If viewing own account, return all fields
+    const viewerAccount = await ctx.db
+      .query("accounts")
+      .withIndex("by_authId", (q) => q.eq("authId", userId))
+      .first();
+
+    if (viewerAccount?._id === account._id) {
+      return account;
+    }
+
+    // For other users, return only public profile fields (minimal for caregiver invite flow)
+    return {
+      _id: account._id,
+      name: account.name,
+      profilePhoto: account.profilePhoto,
+      // Exclude most fields to prevent email enumeration abuse
+    };
   },
 });
 

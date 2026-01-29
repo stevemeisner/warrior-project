@@ -22,7 +22,7 @@ interface WarriorWithAccount {
       latitude?: number;
       longitude?: number;
     };
-  };
+  } | null;
 }
 
 interface MapWarriorListPanelProps {

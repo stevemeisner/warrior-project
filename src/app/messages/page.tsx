@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,14 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 function MessagesContent() {
-  const conversations = useQuery(api.messages.getMyConversations);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const toAccountId = searchParams.get("to");
+
+  const conversationsData = useQuery(api.messages.getMyConversations, {});
+  const conversations = conversationsData && !Array.isArray(conversationsData)
+    ? conversationsData.conversations
+    : undefined;
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const selectedConversation = useQuery(
     api.messages.getConversation,
@@ -21,9 +29,45 @@ function MessagesContent() {
 
   const sendMessage = useMutation(api.messages.sendMessage);
   const markAsRead = useMutation(api.messages.markAsRead);
+  const startConversation = useMutation(api.messages.startConversation);
 
   const [newMessage, setNewMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const hasHandledToParam = useRef(false);
+
+  // Handle ?to=accountId parameter - find or create conversation with that user
+  useEffect(() => {
+    async function handleToParameter() {
+      if (!toAccountId || !conversations || hasHandledToParam.current) return;
+
+      hasHandledToParam.current = true;
+
+      // Find existing conversation with this user
+      const existingConversation = conversations.find((conv) =>
+        conv.participants?.some((p) => p?._id?.toString() === toAccountId)
+      );
+
+      if (existingConversation) {
+        setSelectedConversationId(existingConversation._id.toString());
+        await markAsRead({ conversationId: existingConversation._id as any });
+      } else {
+        // Create new conversation with this user
+        try {
+          const newConversationId = await startConversation({
+            participantIds: [toAccountId as any],
+          });
+          setSelectedConversationId(newConversationId.toString());
+        } catch (error) {
+          console.error("Failed to start conversation:", error);
+        }
+      }
+
+      // Clear the ?to param from URL to prevent re-processing
+      router.replace("/messages");
+    }
+
+    handleToParameter();
+  }, [toAccountId, conversations, markAsRead, startConversation, router]);
 
   const handleSelectConversation = async (conversationId: string) => {
     setSelectedConversationId(conversationId);
@@ -49,7 +93,7 @@ function MessagesContent() {
   };
 
   // Loading state
-  if (conversations === undefined) {
+  if (conversationsData === undefined) {
     return (
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Messages</h1>

@@ -24,11 +24,48 @@ export const getMyWarriors = query({
   },
 });
 
-// Get a single warrior by ID
+// Get a single warrior by ID (with visibility check)
 export const getWarrior = query({
   args: { warriorId: v.id("warriors") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.warriorId);
+    const warrior = await ctx.db.get(args.warriorId);
+    if (!warrior) return null;
+
+    const userId = await auth.getUserId(ctx);
+
+    // Check access rights
+    if (userId) {
+      const viewerAccount = await ctx.db
+        .query("accounts")
+        .withIndex("by_authId", (q) => q.eq("authId", userId))
+        .first();
+
+      if (viewerAccount) {
+        // Owner has full access
+        if (viewerAccount._id === warrior.accountId) {
+          return warrior;
+        }
+
+        // Check if viewer is a caregiver for this warrior's account
+        const caregiverRelation = await ctx.db
+          .query("caregivers")
+          .withIndex("by_caregiver", (q) => q.eq("caregiverAccountId", viewerAccount._id))
+          .filter((q) => q.eq(q.field("accountId"), warrior.accountId))
+          .first();
+
+        if (caregiverRelation?.inviteStatus === "accepted") {
+          return warrior;
+        }
+      }
+    }
+
+    // For non-owners/non-caregivers, only return if public
+    if (warrior.visibility === "public") {
+      return warrior;
+    }
+
+    // Private or connections-only warriors not accessible to others
+    return null;
   },
 });
 
@@ -251,11 +288,12 @@ export const getPublicWarriors = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db
+    // Limit query to prevent loading too many records
+    const limit = args.limit || 100;
+    const warriors = await ctx.db
       .query("warriors")
-      .withIndex("by_visibility", (q) => q.eq("visibility", "public"));
-
-    const warriors = await query.collect();
+      .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
+      .take(limit * 2); // Fetch extra for status filtering
 
     let filtered = warriors;
     if (args.status) {
@@ -264,7 +302,7 @@ export const getPublicWarriors = query({
 
     // Get account info for each warrior
     const warriorsWithAccounts = await Promise.all(
-      filtered.slice(0, args.limit || 100).map(async (warrior) => {
+      filtered.slice(0, limit).map(async (warrior) => {
         const account = await ctx.db.get(warrior.accountId);
         return {
           ...warrior,

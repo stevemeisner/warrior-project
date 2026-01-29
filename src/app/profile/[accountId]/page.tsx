@@ -80,7 +80,7 @@ function PublicProfileContent() {
             <div className="flex-1">
               <h1 className="text-2xl font-bold">{account.name}</h1>
               <p className="text-muted-foreground capitalize">{account.role}</p>
-              {account.privacySettings?.showLocation && account.location && (
+              {'privacySettings' in account && account.privacySettings?.showLocation && account.location && (
                 <p className="text-sm text-muted-foreground mt-1">
                   📍 {account.location.city}
                   {account.location.state && `, ${account.location.state}`}

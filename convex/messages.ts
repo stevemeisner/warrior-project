@@ -3,10 +3,13 @@ import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { auth } from "./auth";
 
-// Get all conversations for the current user
+// Get all conversations for the current user (with pagination)
 export const getMyConversations = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    cursor: v.optional(v.number()), // lastMessageAt timestamp to paginate from
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
     if (!userId) return [];
 
@@ -17,14 +20,28 @@ export const getMyConversations = query({
 
     if (!account) return [];
 
-    // Get all conversations where user is a participant
-    const allConversations = await ctx.db.query("conversations").collect();
-    const myConversations = allConversations.filter((conv) =>
-      conv.participants.includes(account._id)
-    );
+    // Get conversations where user is a participant (with cursor-based pagination)
+    // Note: This filters in memory since Convex doesn't support array membership queries well
+    const limit = args.limit || 50;
+    const cursor = args.cursor;
 
-    // Sort by last message
-    myConversations.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
+    // Fetch conversations, filtering by cursor if provided
+    let allConversations;
+    if (cursor !== undefined) {
+      allConversations = await ctx.db.query("conversations")
+        .withIndex("by_last_message")
+        .order("desc")
+        .filter((q) => q.lt(q.field("lastMessageAt"), cursor))
+        .take(limit * 3);
+    } else {
+      allConversations = await ctx.db.query("conversations")
+        .withIndex("by_last_message")
+        .order("desc")
+        .take(limit * 3);
+    }
+    const myConversations = allConversations
+      .filter((conv) => conv.participants.includes(account._id))
+      .slice(0, limit);
 
     // Enrich with participant info and last message
     const enrichedConversations = await Promise.all(
@@ -77,15 +94,22 @@ export const getMyConversations = query({
       })
     );
 
-    return enrichedConversations;
+    // Return with pagination info
+    const lastConv = myConversations[myConversations.length - 1];
+    return {
+      conversations: enrichedConversations,
+      nextCursor: lastConv?.lastMessageAt ?? lastConv?.createdAt,
+      hasMore: myConversations.length === limit,
+    };
   },
 });
 
-// Get a single conversation with messages
+// Get a single conversation with messages (with pagination for older messages)
 export const getConversation = query({
   args: {
     conversationId: v.id("conversations"),
     limit: v.optional(v.number()),
+    beforeTimestamp: v.optional(v.number()), // Load messages before this timestamp
   },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
@@ -127,14 +151,33 @@ export const getConversation = query({
       if (!hasAccess) return null;
     }
 
-    // Get messages
-    const messages = await ctx.db
-      .query("messages")
-      .withIndex("by_conversation_and_created", (q) =>
-        q.eq("conversationId", args.conversationId)
-      )
-      .order("asc")
-      .take(args.limit || 100);
+    // Get messages (with optional pagination for loading older messages)
+    const limit = args.limit || 100;
+    const beforeTimestamp = args.beforeTimestamp;
+
+    let messages;
+    if (beforeTimestamp !== undefined) {
+      // Load older messages (before the given timestamp)
+      messages = await ctx.db
+        .query("messages")
+        .withIndex("by_conversation_and_created", (q) =>
+          q.eq("conversationId", args.conversationId)
+        )
+        .filter((q) => q.lt(q.field("createdAt"), beforeTimestamp))
+        .order("desc")
+        .take(limit);
+    } else {
+      // Load most recent messages
+      messages = await ctx.db
+        .query("messages")
+        .withIndex("by_conversation_and_created", (q) =>
+          q.eq("conversationId", args.conversationId)
+        )
+        .order("desc")
+        .take(limit);
+    }
+    // Reverse to get chronological order for display
+    messages.reverse();
 
     // Enrich with sender info
     const enrichedMessages = await Promise.all(
@@ -162,10 +205,14 @@ export const getConversation = query({
       })
     );
 
+    // Pagination info for loading older messages
+    const oldestMessage = enrichedMessages[0];
     return {
       ...conversation,
       participants: participants.filter(Boolean),
       messages: enrichedMessages,
+      oldestMessageTimestamp: oldestMessage?.createdAt,
+      hasMoreMessages: messages.length === limit,
     };
   },
 });
@@ -381,18 +428,24 @@ export const getUnreadCount = query({
 
     if (!account) return 0;
 
-    // Get all conversations
-    const allConversations = await ctx.db.query("conversations").collect();
+    // Get recent conversations (limited for performance)
+    // Note: For accurate counts with many conversations, consider denormalizing unread count
+    const allConversations = await ctx.db.query("conversations")
+      .withIndex("by_last_message")
+      .order("desc")
+      .take(100);
     const myConversations = allConversations.filter((conv) =>
       conv.participants.includes(account._id)
     );
 
     let totalUnread = 0;
     for (const conv of myConversations) {
+      // Only check recent messages for performance
       const messages = await ctx.db
         .query("messages")
-        .withIndex("by_conversation", (q) => q.eq("conversationId", conv._id))
-        .collect();
+        .withIndex("by_conversation_and_created", (q) => q.eq("conversationId", conv._id))
+        .order("desc")
+        .take(50);
 
       totalUnread += messages.filter(
         (m) => !m.readBy.includes(account._id) && m.senderId !== account._id

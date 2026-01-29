@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation } from "convex/react";
+import { useRouter } from "next/navigation";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,7 @@ const notificationIcons: Record<string, string> = {
 };
 
 function NotificationsContent() {
+  const router = useRouter();
   const notifications = useQuery(api.notifications.getMyNotifications, {
     limit: 50,
   });
@@ -28,6 +30,27 @@ function NotificationsContent() {
 
   const handleMarkAsRead = async (notificationId: string) => {
     await markAsRead({ notificationId: notificationId as any });
+  };
+
+  // Navigate to the relevant page based on notification type
+  const handleNotificationClick = async (notification: NonNullable<typeof notifications>[0]) => {
+    // Mark as read first
+    if (!notification.isRead) {
+      await markAsRead({ notificationId: notification._id as any });
+    }
+
+    // Navigate based on notification type and related entities
+    if (notification.type === "newMessage" && notification.relatedConversationId) {
+      router.push("/messages");
+    } else if (notification.type === "threadReply" && notification.relatedThreadId) {
+      router.push(`/community?thread=${notification.relatedThreadId}`);
+    } else if (notification.type === "statusChange" && notification.relatedWarriorId) {
+      router.push(`/profile/warrior/${notification.relatedWarriorId}`);
+    } else if (notification.type === "caregiverInvite") {
+      router.push("/settings");
+    } else if (notification.type === "supportRequest" && notification.relatedAccountId) {
+      router.push(`/profile/${notification.relatedAccountId}`);
+    }
   };
 
   const handleMarkAllAsRead = async () => {
@@ -58,8 +81,9 @@ function NotificationsContent() {
               {notifications.map((notification) => (
                 <div
                   key={notification._id}
+                  onClick={() => handleNotificationClick(notification)}
                   className={cn(
-                    "p-4 flex items-start gap-4 hover:bg-muted/50 transition-colors",
+                    "p-4 flex items-start gap-4 hover:bg-muted/50 transition-colors cursor-pointer",
                     !notification.isRead && "bg-primary/5"
                   )}
                 >
@@ -98,9 +122,10 @@ function NotificationsContent() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() =>
-                            handleMarkAsRead(notification._id.toString())
-                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMarkAsRead(notification._id.toString());
+                          }}
                         >
                           Mark as read
                         </Button>
@@ -109,9 +134,10 @@ function NotificationsContent() {
                         variant="ghost"
                         size="sm"
                         className="text-muted-foreground"
-                        onClick={() =>
-                          handleDelete(notification._id.toString())
-                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(notification._id.toString());
+                        }}
                       >
                         Delete
                       </Button>

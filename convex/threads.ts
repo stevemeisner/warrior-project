@@ -52,23 +52,30 @@ export const getThreads = query({
 
 // Get a single thread with comments
 export const getThread = query({
-  args: { threadId: v.id("threads") },
+  args: {
+    threadId: v.id("threads"),
+    commentLimit: v.optional(v.number()), // Default 200, can request more
+  },
   handler: async (ctx, args) => {
     const thread = await ctx.db.get(args.threadId);
     if (!thread) return null;
 
     const author = await ctx.db.get(thread.authorId);
 
-    // Get all comments for this thread
+    // Get comments for this thread
+    const limit = args.commentLimit || 200;
     const comments = await ctx.db
       .query("comments")
       .withIndex("by_thread_and_created", (q) => q.eq("threadId", args.threadId))
       .order("asc")
-      .collect();
+      .take(limit + 1); // Fetch one extra to check if there are more
+
+    const hasMoreComments = comments.length > limit;
+    const displayComments = hasMoreComments ? comments.slice(0, limit) : comments;
 
     // Enrich comments with author info
     const enrichedComments = await Promise.all(
-      comments.map(async (comment) => {
+      displayComments.map(async (comment) => {
         const commentAuthor = await ctx.db.get(comment.authorId);
         return {
           ...comment,
@@ -101,6 +108,8 @@ export const getThread = query({
       authorName: author?.name || "Unknown",
       authorPhoto: author?.profilePhoto,
       comments: nestedComments,
+      hasMoreComments,
+      totalCommentCount: thread.commentCount,
     };
   },
 });
@@ -236,10 +245,16 @@ export const deleteThread = mutation({
   },
 });
 
-// Increment view count
+// Increment view count (requires authentication to prevent abuse)
 export const incrementViewCount = mutation({
   args: { threadId: v.id("threads") },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      // Silently ignore unauthenticated view count increments
+      return null;
+    }
+
     const thread = await ctx.db.get(args.threadId);
     if (!thread) {
       throw new Error("Thread not found");
