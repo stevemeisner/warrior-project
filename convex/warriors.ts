@@ -199,7 +199,7 @@ export const updateWarrior = mutation({
       throw new Error("Warrior not found");
     }
 
-    // Check ownership or caregiver with fullAccess
+    // Check ownership or caregiver with canUpdate/fullAccess
     const isOwner = warrior.accountId === account._id;
     let hasAccess = isOwner;
 
@@ -212,7 +212,8 @@ export const updateWarrior = mutation({
 
       hasAccess =
         caregiverRelation?.inviteStatus === "accepted" &&
-        caregiverRelation?.permissions === "fullAccess";
+        (caregiverRelation?.permissions === "canUpdate" ||
+          caregiverRelation?.permissions === "fullAccess");
     }
 
     if (!hasAccess) {
