@@ -8,7 +8,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="py-20 px-4 text-center bg-gradient-to-b from-primary/5 to-background">
         <div className="container mx-auto max-w-4xl">
-          <span className="text-6xl mb-6 block">🛡️</span>
+          <span className="text-6xl mb-6 block" aria-hidden="true">🛡️</span>
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             Welcome to the Warrior Project
           </h1>
@@ -40,7 +40,7 @@ export default function Home() {
           <div className="grid md:grid-cols-3 gap-8">
             <Card className="text-center">
               <CardContent className="pt-8 pb-6">
-                <span className="text-4xl mb-4 block">📍</span>
+                <span className="text-4xl mb-4 block" aria-hidden="true">📍</span>
                 <h3 className="text-xl font-semibold mb-2">Find Nearby Warriors</h3>
                 <p className="text-muted-foreground">
                   Connect with families in your area through our interactive map.
@@ -50,7 +50,7 @@ export default function Home() {
             </Card>
             <Card className="text-center">
               <CardContent className="pt-8 pb-6">
-                <span className="text-4xl mb-4 block">💬</span>
+                <span className="text-4xl mb-4 block" aria-hidden="true">💬</span>
                 <h3 className="text-xl font-semibold mb-2">Stay Connected</h3>
                 <p className="text-muted-foreground">
                   Share status updates, send messages, and keep your support
@@ -60,7 +60,7 @@ export default function Home() {
             </Card>
             <Card className="text-center">
               <CardContent className="pt-8 pb-6">
-                <span className="text-4xl mb-4 block">💜</span>
+                <span className="text-4xl mb-4 block" aria-hidden="true">💜</span>
                 <h3 className="text-xl font-semibold mb-2">Give & Receive Support</h3>
                 <p className="text-muted-foreground">
                   When you need help, let others know. When you can help, be
@@ -95,7 +95,7 @@ export default function Home() {
                 key={status.label}
                 className="flex items-center gap-3 p-4 rounded-lg bg-card"
               >
-                <span className="text-3xl">{status.emoji}</span>
+                <span className="text-3xl" aria-hidden="true">{status.emoji}</span>
                 <div>
                   <p className="font-medium">{status.label}</p>
                   <p className="text-sm text-muted-foreground">{status.desc}</p>

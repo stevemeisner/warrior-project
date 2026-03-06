@@ -13,11 +13,24 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { StatusBadge, WarriorStatus } from "@/components/status-selector";
 import { MapWarriorListPanel } from "@/components/map-warrior-list-panel";
 
-interface ViewportBounds {
+export interface ViewportBounds {
   north: number;
   south: number;
   east: number;
   west: number;
+}
+
+export function isWithinBounds(
+  lat: number,
+  lng: number,
+  bounds: ViewportBounds
+): boolean {
+  const latInRange = lat >= bounds.south && lat <= bounds.north;
+  // Handle antimeridian crossing
+  const lngInRange = bounds.west <= bounds.east
+    ? lng >= bounds.west && lng <= bounds.east
+    : lng >= bounds.west || lng <= bounds.east;
+  return latInRange && lngInRange;
 }
 
 // Note: In production, use environment variable
@@ -41,20 +54,15 @@ function MapContent() {
     if (!warriors || !viewportBounds) return [];
     return warriors.filter((warrior) => {
       const loc = warrior.account?.location;
-      if (!loc?.latitude || !loc?.longitude) return false;
-      return (
-        loc.latitude >= viewportBounds.south &&
-        loc.latitude <= viewportBounds.north &&
-        loc.longitude >= viewportBounds.west &&
-        loc.longitude <= viewportBounds.east
-      );
+      if (loc?.latitude == null || loc?.longitude == null) return false;
+      return isWithinBounds(loc.latitude, loc.longitude, viewportBounds);
     });
   }, [warriors, viewportBounds]);
 
   // Handle clicking a warrior in the list panel
   const handleWarriorListClick = (warrior: any) => {
     const loc = warrior.account?.location;
-    if (!loc?.longitude || !loc?.latitude || !map.current) return;
+    if (loc?.longitude == null || loc?.latitude == null || !map.current) return;
 
     map.current.flyTo({
       center: [loc.longitude, loc.latitude],
@@ -160,7 +168,7 @@ function MapContent() {
         font-size: 20px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
       `;
-      el.innerHTML = getStatusEmoji(warrior.currentStatus);
+      el.innerHTML = `<span aria-hidden="true">${getStatusEmoji(warrior.currentStatus)}</span>`;
 
       el.addEventListener("click", () => {
         setSelectedWarrior(warrior);
@@ -217,7 +225,7 @@ function MapContent() {
             onClick={() => setStatusFilter(option.value)}
           >
             {option.value !== "all" && (
-              <span className="mr-1">{getStatusEmoji(option.value as WarriorStatus)}</span>
+              <span className="mr-1" aria-hidden="true">{getStatusEmoji(option.value as WarriorStatus)}</span>
             )}
             {option.label}
           </Button>
@@ -233,7 +241,7 @@ function MapContent() {
       />
 
       {/* Map Container */}
-      <div ref={mapContainer} className="w-full h-full" />
+      <div ref={mapContainer} className="w-full h-full" role="application" aria-label="Interactive map showing warrior locations" />
 
       {/* No token warning */}
       {!mapboxgl.accessToken && (
@@ -279,6 +287,7 @@ function MapContent() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSelectedWarrior(null)}
+                  aria-label="Close warrior details"
                 >
                   &times;
                 </Button>
@@ -319,7 +328,7 @@ export default function MapPage() {
   return (
     <>
       <AuthLoading>
-        <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center justify-center min-h-screen" role="status" aria-label="Loading map">
           <p>Loading...</p>
         </div>
       </AuthLoading>

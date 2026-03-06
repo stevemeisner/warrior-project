@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { NotificationsSkeleton } from "@/components/skeleton-loaders";
 
 const notificationIcons: Record<string, string> = {
   statusChange: "📊",
@@ -87,7 +88,7 @@ function NotificationsContent() {
                     !notification.isRead && "bg-primary/5"
                   )}
                 >
-                  <div className="text-2xl">
+                  <div className="text-2xl" aria-hidden="true">
                     {notificationIcons[notification.type] || "🔔"}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -148,7 +149,7 @@ function NotificationsContent() {
             </div>
           ) : (
             <div className="py-12 text-center text-muted-foreground">
-              <span className="text-4xl block mb-4">🔔</span>
+              <span className="text-4xl block mb-4" aria-hidden="true">🔔</span>
               <p>No notifications yet</p>
               <p className="text-sm mt-1">
                 You&apos;ll see updates here when there&apos;s activity
@@ -165,9 +166,7 @@ export default function NotificationsPage() {
   return (
     <>
       <AuthLoading>
-        <div className="flex items-center justify-center min-h-screen">
-          <p>Loading...</p>
-        </div>
+        <NotificationsSkeleton />
       </AuthLoading>
       <Unauthenticated>
         <div className="flex items-center justify-center min-h-screen">

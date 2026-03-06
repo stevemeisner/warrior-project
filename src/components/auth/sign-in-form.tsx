@@ -112,9 +112,11 @@ export function SignInForm() {
             />
           </div>
 
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
+          <div aria-live="polite" aria-atomic="true">
+            {error && (
+              <p className="text-sm text-destructive" role="alert">{error}</p>
+            )}
+          </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Signing in..." : "Sign In"}

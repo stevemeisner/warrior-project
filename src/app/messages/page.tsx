@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { MessagesSkeleton } from "@/components/skeleton-loaders";
 
 function MessagesContent() {
   const searchParams = useSearchParams();
@@ -94,17 +95,7 @@ function MessagesContent() {
 
   // Loading state
   if (conversationsData === undefined) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Messages</h1>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading conversations...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <MessagesSkeleton />;
   }
 
   return (
@@ -256,9 +247,7 @@ export default function MessagesPage() {
   return (
     <>
       <AuthLoading>
-        <div className="flex items-center justify-center min-h-screen">
-          <p>Loading...</p>
-        </div>
+        <MessagesSkeleton />
       </AuthLoading>
       <Unauthenticated>
         <div className="flex items-center justify-center min-h-screen">

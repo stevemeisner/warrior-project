@@ -23,6 +23,14 @@ export default defineConfig({
           setupFiles: ["./convex/test.vitestSetup.ts"],
         },
       },
+      {
+        extends: true,
+        test: {
+          name: "unit",
+          include: ["src/**/*.test.ts"],
+          environment: "node",
+        },
+      },
     ],
   },
 });

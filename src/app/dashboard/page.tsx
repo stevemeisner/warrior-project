@@ -3,6 +3,7 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { WarriorList } from "@/components/warrior-card";
+import { DashboardSkeleton } from "@/components/skeleton-loaders";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
@@ -33,14 +34,7 @@ function DashboardContent() {
 
   // Loading state (query in flight)
   if (account === undefined) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading your account...</p>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   // No account exists - redirect to onboarding
@@ -140,7 +134,7 @@ function DashboardContent() {
           <Link href="/map">
             <Card className="cursor-pointer hover:shadow-md transition-shadow">
               <CardContent className="pt-6 text-center">
-                <span className="text-4xl mb-2 block">📍</span>
+                <span className="text-4xl mb-2 block" aria-hidden="true">📍</span>
                 <p className="font-medium">Map</p>
                 <p className="text-sm text-muted-foreground">Find warriors nearby</p>
               </CardContent>
@@ -149,7 +143,7 @@ function DashboardContent() {
           <Link href="/messages">
             <Card className="cursor-pointer hover:shadow-md transition-shadow">
               <CardContent className="pt-6 text-center">
-                <span className="text-4xl mb-2 block">💬</span>
+                <span className="text-4xl mb-2 block" aria-hidden="true">💬</span>
                 <p className="font-medium">Messages</p>
                 <p className="text-sm text-muted-foreground">
                   {unreadMessages ? `${unreadMessages} unread` : "Start chatting"}
@@ -160,7 +154,7 @@ function DashboardContent() {
           <Link href="/community">
             <Card className="cursor-pointer hover:shadow-md transition-shadow">
               <CardContent className="pt-6 text-center">
-                <span className="text-4xl mb-2 block">🏠</span>
+                <span className="text-4xl mb-2 block" aria-hidden="true">🏠</span>
                 <p className="font-medium">Community</p>
                 <p className="text-sm text-muted-foreground">Join discussions</p>
               </CardContent>
@@ -181,7 +175,7 @@ function DashboardContent() {
                     key={update._id}
                     className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
                   >
-                    <span className="text-2xl">
+                    <span className="text-2xl" aria-hidden="true">
                       {update.status === "thriving" && "🌟"}
                       {update.status === "stable" && "💙"}
                       {update.status === "struggling" && "🌧️"}
@@ -223,9 +217,7 @@ export default function DashboardPage() {
   return (
     <>
       <AuthLoading>
-        <div className="flex items-center justify-center min-h-screen">
-          <p>Loading...</p>
-        </div>
+        <DashboardSkeleton />
       </AuthLoading>
       <Unauthenticated>
         <div className="flex items-center justify-center min-h-screen">

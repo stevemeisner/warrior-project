@@ -15,6 +15,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -28,6 +29,7 @@ import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { CommunitySkeleton } from "@/components/skeleton-loaders";
 
 type Category = "general" | "support" | "resources" | "celebrations" | "questions";
 
@@ -118,6 +120,7 @@ function CommunityContent() {
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Start a New Discussion</DialogTitle>
+              <DialogDescription>Create a new community discussion thread.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateThread} className="space-y-4">
               <div className="space-y-2">
@@ -215,11 +218,19 @@ function CommunityContent() {
         {/* Thread List */}
         <div className="space-y-4">
           {threads === undefined ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Loading discussions...</p>
-              </div>
+            <div className="space-y-4" role="status" aria-label="Loading discussions">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="animate-pulse rounded-xl border bg-card p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="h-5 w-16 bg-muted rounded" />
+                    <div className="h-5 w-20 bg-muted rounded" />
+                  </div>
+                  <div className="h-6 w-3/4 bg-muted rounded mb-2" />
+                  <div className="h-4 w-full bg-muted rounded mb-1" />
+                  <div className="h-4 w-2/3 bg-muted rounded" />
+                </div>
+              ))}
+              <span className="sr-only">Loading discussions</span>
             </div>
           ) : threads.length > 0 ? (
             threads.map((thread) => (
@@ -375,9 +386,7 @@ export default function CommunityPage() {
   return (
     <>
       <AuthLoading>
-        <div className="flex items-center justify-center min-h-screen">
-          <p>Loading...</p>
-        </div>
+        <CommunitySkeleton />
       </AuthLoading>
       <Unauthenticated>
         <div className="flex items-center justify-center min-h-screen">

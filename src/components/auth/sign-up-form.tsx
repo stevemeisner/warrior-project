@@ -137,7 +137,7 @@ export function SignUpForm() {
               key={option.value}
               onClick={() => handleRoleSelect(option.value)}
               className={cn(
-                "w-full p-4 rounded-lg border-2 text-left transition-all hover:border-primary",
+                "w-full p-4 rounded-lg border-2 text-left transition-all hover:border-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 role === option.value ? "border-primary bg-primary/5" : "border-border"
               )}
             >
@@ -266,7 +266,9 @@ export function SignUpForm() {
             />
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          <div aria-live="polite" aria-atomic="true">
+            {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+          </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Creating account..." : "Create Account"}

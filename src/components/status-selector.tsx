@@ -83,8 +83,9 @@ export function StatusSelector({
           key={option.value}
           onClick={() => onStatusChange(option.value)}
           disabled={disabled}
+          aria-pressed={currentStatus === option.value}
           className={cn(
-            "flex items-center gap-2 rounded-lg border-2 transition-all",
+            "flex items-center gap-2 rounded-lg border-2 transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             compact ? "px-2 py-1 text-sm" : "px-3 py-2",
             currentStatus === option.value
               ? "border-primary bg-primary/10"
@@ -129,8 +130,9 @@ export function StatusBadge({
         sizeClasses[size]
       )}
     >
-      <span>{option.emoji}</span>
+      <span aria-hidden="true">{option.emoji}</span>
       {showLabel && <span>{option.label}</span>}
+      {!showLabel && <span className="sr-only">{option.label}</span>}
     </span>
   );
 }

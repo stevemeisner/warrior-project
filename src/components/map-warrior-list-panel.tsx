@@ -74,6 +74,8 @@ export function MapWarriorListPanel({
           size="sm"
           className="h-8 w-8 p-0"
           onClick={() => setIsCollapsed(!isCollapsed)}
+          aria-expanded={!isCollapsed}
+          aria-label={isCollapsed ? "Expand warrior list" : "Collapse warrior list"}
         >
           {isCollapsed ? (
             <ChevronRight className="h-4 w-4" />
@@ -147,6 +149,10 @@ export function MapWarriorListPanel({
         <div
           className="flex justify-center py-2 cursor-pointer"
           onClick={() => setIsMobileExpanded(!isMobileExpanded)}
+          role="button"
+          tabIndex={0}
+          aria-label={isMobileExpanded ? "Collapse warrior list" : "Expand warrior list"}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsMobileExpanded(!isMobileExpanded); } }}
         >
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
@@ -165,6 +171,8 @@ export function MapWarriorListPanel({
               size="sm"
               className="h-8 px-2"
               onClick={() => setIsMobileExpanded(!isMobileExpanded)}
+              aria-expanded={isMobileExpanded}
+              aria-label={isMobileExpanded ? "Show fewer warriors" : `Show ${warriors.length - 3} more warriors`}
             >
               {isMobileExpanded ? (
                 <>
