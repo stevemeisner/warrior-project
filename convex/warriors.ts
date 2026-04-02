@@ -85,29 +85,29 @@ export const getWarrior = query({
 
     const userId = await auth.getUserId(ctx);
 
-    // Check access rights
-    if (userId) {
-      const viewerAccount = await ctx.db
-        .query("accounts")
-        .withIndex("by_authId", (q) => q.eq("authId", userId))
+    // Fetch viewer account once for all access checks
+    const viewerAccount = userId
+      ? await ctx.db
+          .query("accounts")
+          .withIndex("by_authId", (q) => q.eq("authId", userId))
+          .first()
+      : null;
+
+    if (viewerAccount) {
+      // Owner has full access
+      if (viewerAccount._id === warrior.accountId) {
+        return warrior;
+      }
+
+      // Check if viewer is a caregiver for this warrior's account
+      const caregiverRelation = await ctx.db
+        .query("caregivers")
+        .withIndex("by_caregiver", (q) => q.eq("caregiverAccountId", viewerAccount._id))
+        .filter((q) => q.eq(q.field("accountId"), warrior.accountId))
         .first();
 
-      if (viewerAccount) {
-        // Owner has full access
-        if (viewerAccount._id === warrior.accountId) {
-          return warrior;
-        }
-
-        // Check if viewer is a caregiver for this warrior's account
-        const caregiverRelation = await ctx.db
-          .query("caregivers")
-          .withIndex("by_caregiver", (q) => q.eq("caregiverAccountId", viewerAccount._id))
-          .filter((q) => q.eq(q.field("accountId"), warrior.accountId))
-          .first();
-
-        if (caregiverRelation?.inviteStatus === "accepted") {
-          return warrior;
-        }
+      if (caregiverRelation?.inviteStatus === "accepted") {
+        return warrior;
       }
     }
 
@@ -117,13 +117,8 @@ export const getWarrior = query({
     }
 
     // "connections" visibility: visible to caregivers and families sharing a caregiver
-    if (warrior.visibility === "connections" && userId) {
-      const viewerAccount = await ctx.db
-        .query("accounts")
-        .withIndex("by_authId", (q) => q.eq("authId", userId))
-        .first();
-
-      if (viewerAccount && await isConnected(ctx, viewerAccount._id, warrior.accountId)) {
+    if (warrior.visibility === "connections" && viewerAccount) {
+      if (await isConnected(ctx, viewerAccount._id, warrior.accountId)) {
         return warrior;
       }
     }

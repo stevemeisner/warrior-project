@@ -327,6 +327,11 @@ export const sendMessage = mutation({
     if (!isParticipant) {
       // Check caregiver access
       for (const participantId of conversation.participants) {
+        // Non-participant senders must also pass the block check
+        if (await isBlocked(ctx, account._id, participantId)) {
+          throw new Error("Cannot send messages in this conversation");
+        }
+
         const caregiverRelation = await ctx.db
           .query("caregivers")
           .withIndex("by_caregiver", (q) => q.eq("caregiverAccountId", account._id))

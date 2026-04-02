@@ -224,6 +224,10 @@ export const updateSupportRequest = mutation({
       throw new Error("Description must be 5000 characters or less");
     }
 
+    if (args.helpTypes !== undefined && args.helpTypes.length === 0) {
+      throw new Error("At least one help type is required");
+    }
+
     const updates: Record<string, unknown> = {
       updatedAt: Date.now(),
     };
