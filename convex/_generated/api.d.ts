@@ -16,6 +16,7 @@ import type * as email from "../email.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
+import type * as search from "../search.js";
 import type * as status from "../status.js";
 import type * as supportRequests from "../supportRequests.js";
 import type * as threads from "../threads.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   messages: typeof messages;
   notifications: typeof notifications;
+  search: typeof search;
   status: typeof status;
   supportRequests: typeof supportRequests;
   threads: typeof threads;
