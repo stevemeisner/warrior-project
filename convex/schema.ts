@@ -174,11 +174,22 @@ export default defineSchema({
     type: conversationTypes,
     name: v.optional(v.string()), // For group conversations
     caregiverAccess: v.boolean(), // Whether caregivers can see this conversation
+    dmKey: v.optional(v.string()), // Sorted participant IDs for O(1) DM dedup lookup
     lastMessageAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_participant", ["participants"])
-    .index("by_last_message", ["lastMessageAt"]),
+    .index("by_last_message", ["lastMessageAt"])
+    .index("by_dmKey", ["dmKey"]),
+
+  // Denormalized unread message counts per user per conversation
+  unreadCounts: defineTable({
+    conversationId: v.id("conversations"),
+    accountId: v.id("accounts"),
+    count: v.number(),
+  })
+    .index("by_conversation_and_account", ["conversationId", "accountId"])
+    .index("by_account", ["accountId"]),
 
   // Messages - individual messages in conversations
   messages: defineTable({

@@ -267,11 +267,15 @@ export async function createConversation(
     participants = [user1.accountId, user2.accountId];
   }
 
+  const type = overrides.type ?? (participants!.length > 2 ? "group" : "dm");
+  const dmKey = type === "dm" ? [...participants!].sort().join("_") : undefined;
+
   const conversationId = await t.run(async (ctx) => {
     return await ctx.db.insert("conversations", {
       participants: participants!,
-      type: overrides.type ?? (participants!.length > 2 ? "group" : "dm"),
+      type,
       name: overrides.name,
+      dmKey,
       caregiverAccess: overrides.caregiverAccess ?? true,
       lastMessageAt: overrides.lastMessageAt,
       createdAt: now,
@@ -320,6 +324,27 @@ export async function createMessage(
   });
 
   return { messageId, conversationId, senderId };
+}
+
+// ── unread counts ───────────────────────────────────────────────────────────
+
+export async function createUnreadCount(
+  t: T,
+  overrides: {
+    conversationId: Id<"conversations">;
+    accountId: Id<"accounts">;
+    count: number;
+  },
+) {
+  const unreadCountId = await t.run(async (ctx) => {
+    return await ctx.db.insert("unreadCounts", {
+      conversationId: overrides.conversationId,
+      accountId: overrides.accountId,
+      count: overrides.count,
+    });
+  });
+
+  return { unreadCountId };
 }
 
 // ── threads ──────────────────────────────────────────────────────────────────

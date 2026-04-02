@@ -72,14 +72,14 @@ export const getMyConversations = query({
           .order("desc")
           .first();
 
-        // Get unread count
-        const messages = await ctx.db
-          .query("messages")
-          .withIndex("by_conversation", (q) => q.eq("conversationId", conv._id))
-          .collect();
-        const unreadCount = messages.filter(
-          (m) => !m.readBy.includes(account._id) && m.senderId !== account._id
-        ).length;
+        // Get unread count from denormalized table
+        const unreadRecord = await ctx.db
+          .query("unreadCounts")
+          .withIndex("by_conversation_and_account", (q) =>
+            q.eq("conversationId", conv._id).eq("accountId", account._id)
+          )
+          .first();
+        const unreadCount = unreadRecord?.count ?? 0;
 
         return {
           ...conv,
@@ -256,17 +256,11 @@ export const startConversation = mutation({
 
     // Check if DM already exists between these participants
     if (allParticipants.length === 2) {
-      const existingConversations = await ctx.db
+      const dmKey = [...allParticipants].sort().join("_");
+      const existingDM = await ctx.db
         .query("conversations")
-        .collect();
-
-      const existingDM = existingConversations.find(
-        (conv) =>
-          conv.type === "dm" &&
-          conv.participants.length === 2 &&
-          conv.participants.includes(allParticipants[0]) &&
-          conv.participants.includes(allParticipants[1])
-      );
+        .withIndex("by_dmKey", (q) => q.eq("dmKey", dmKey))
+        .first();
 
       if (existingDM) {
         return existingDM._id;
@@ -274,11 +268,15 @@ export const startConversation = mutation({
     }
 
     const conversationType = allParticipants.length > 2 ? "group" : "dm";
+    const dmKey = conversationType === "dm"
+      ? [...allParticipants].sort().join("_")
+      : undefined;
 
     const conversationId = await ctx.db.insert("conversations", {
       participants: allParticipants,
       type: conversationType,
       name: conversationType === "group" ? args.name : undefined,
+      dmKey,
       caregiverAccess: args.caregiverAccess ?? true,
       createdAt: Date.now(),
     });
@@ -377,6 +375,28 @@ export const sendMessage = mutation({
       lastMessageAt: now,
     });
 
+    // Increment unread counts for other participants
+    for (const participantId of conversation.participants) {
+      if (participantId !== account._id) {
+        const existing = await ctx.db
+          .query("unreadCounts")
+          .withIndex("by_conversation_and_account", (q) =>
+            q.eq("conversationId", args.conversationId).eq("accountId", participantId)
+          )
+          .first();
+
+        if (existing) {
+          await ctx.db.patch(existing._id, { count: existing.count + 1 });
+        } else {
+          await ctx.db.insert("unreadCounts", {
+            conversationId: args.conversationId,
+            accountId: participantId,
+            count: 1,
+          });
+        }
+      }
+    }
+
     // Create notifications for other participants
     const preview = args.content.length > 100
       ? args.content.substring(0, 100) + "..."
@@ -437,7 +457,31 @@ export const markAsRead = mutation({
       throw new Error("Conversation not found");
     }
 
-    if (!conversation.participants.includes(account._id)) {
+    // Check if user is a participant or an authorized caregiver
+    let hasAccess = conversation.participants.includes(account._id);
+
+    if (!hasAccess) {
+      for (const participantId of conversation.participants) {
+        const caregiverRelation = await ctx.db
+          .query("caregivers")
+          .withIndex("by_caregiver", (q) => q.eq("caregiverAccountId", account._id))
+          .filter((q) => q.eq(q.field("accountId"), participantId))
+          .first();
+
+        if (
+          caregiverRelation?.inviteStatus === "accepted" &&
+          conversation.caregiverAccess &&
+          (caregiverRelation.permissions === "canMessage" ||
+            caregiverRelation.permissions === "canUpdate" ||
+            caregiverRelation.permissions === "fullAccess")
+        ) {
+          hasAccess = true;
+          break;
+        }
+      }
+    }
+
+    if (!hasAccess) {
       throw new Error("Not a participant in this conversation");
     }
 
@@ -458,11 +502,23 @@ export const markAsRead = mutation({
       });
     }
 
+    // Reset denormalized unread count
+    const unreadRecord = await ctx.db
+      .query("unreadCounts")
+      .withIndex("by_conversation_and_account", (q) =>
+        q.eq("conversationId", args.conversationId).eq("accountId", account._id)
+      )
+      .first();
+
+    if (unreadRecord) {
+      await ctx.db.patch(unreadRecord._id, { count: 0 });
+    }
+
     return unreadMessages.length;
   },
 });
 
-// Get unread message count
+// Get unread message count (from denormalized unreadCounts table)
 export const getUnreadCount = query({
   args: {},
   handler: async (ctx) => {
@@ -476,30 +532,11 @@ export const getUnreadCount = query({
 
     if (!account) return 0;
 
-    // Get recent conversations (limited for performance)
-    // Note: For accurate counts with many conversations, consider denormalizing unread count
-    const allConversations = await ctx.db.query("conversations")
-      .withIndex("by_last_message")
-      .order("desc")
-      .take(100);
-    const myConversations = allConversations.filter((conv) =>
-      conv.participants.includes(account._id)
-    );
+    const unreadRecords = await ctx.db
+      .query("unreadCounts")
+      .withIndex("by_account", (q) => q.eq("accountId", account._id))
+      .collect();
 
-    let totalUnread = 0;
-    for (const conv of myConversations) {
-      // Only check recent messages for performance
-      const messages = await ctx.db
-        .query("messages")
-        .withIndex("by_conversation_and_created", (q) => q.eq("conversationId", conv._id))
-        .order("desc")
-        .take(50);
-
-      totalUnread += messages.filter(
-        (m) => !m.readBy.includes(account._id) && m.senderId !== account._id
-      ).length;
-    }
-
-    return totalUnread;
+    return unreadRecords.reduce((sum, r) => sum + r.count, 0);
   },
 });

@@ -8,6 +8,7 @@ import {
   createConversation,
   createMessage,
   createCaregiverRelation,
+  createUnreadCount,
   resetFactoryCounter,
 } from "./test.factories";
 
@@ -65,6 +66,9 @@ describe("getMyConversations", () => {
       content: "Hello Alice",
       readBy: [bobId],
     });
+
+    // Seed denormalized unread count
+    await createUnreadCount(t, { conversationId, accountId: aliceId, count: 1 });
 
     const result = await asAlice.query(api.messages.getMyConversations, {});
     expect(result.conversations).toHaveLength(1);
@@ -494,6 +498,27 @@ describe("sendMessage", () => {
     ).rejects.toThrow("Not authorized");
   });
 
+  it("increments denormalized unread count for other participants", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId: aliceId, asUser: asAlice } = await createAccount(t, { name: "Alice" });
+    const { accountId: bobId, asUser: asBob } = await createAccount(t, { name: "Bob" });
+
+    const { conversationId } = await createConversation(t, { participants: [aliceId, bobId] });
+
+    await asAlice.mutation(api.messages.sendMessage, {
+      conversationId,
+      content: "Hello Bob!",
+    });
+
+    // Bob should have unread count of 1
+    const bobCount = await asBob.query(api.messages.getUnreadCount, {});
+    expect(bobCount).toBe(1);
+
+    // Alice (sender) should have 0
+    const aliceCount = await asAlice.query(api.messages.getUnreadCount, {});
+    expect(aliceCount).toBe(0);
+  });
+
   it("throws for unauthenticated user", async () => {
     const t = convexTest(schema, modules);
     const { accountId: aliceId } = await createAccount(t, { name: "Alice" });
@@ -562,6 +587,83 @@ describe("markAsRead", () => {
     expect(count).toBe(0); // Already read
   });
 
+  it("caregiver with canMessage can mark as read", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId: aliceId } = await createAccount(t, { name: "Alice" });
+    const { accountId: bobId } = await createAccount(t, { name: "Bob" });
+    const { accountId: caregiverId, asUser: asCaregiver } = await createAccount(t, {
+      name: "Caregiver",
+      role: "caregiver",
+    });
+
+    const { conversationId } = await createConversation(t, {
+      participants: [aliceId, bobId],
+      caregiverAccess: true,
+    });
+
+    await createCaregiverRelation(t, {
+      accountId: aliceId,
+      caregiverAccountId: caregiverId,
+      permissions: "canMessage",
+      inviteStatus: "accepted",
+    });
+
+    // Bob sends a message not read by caregiver
+    await createMessage(t, {
+      conversationId,
+      senderId: bobId,
+      content: "Hello",
+      readBy: [bobId],
+    });
+
+    const count = await asCaregiver.mutation(api.messages.markAsRead, { conversationId });
+    expect(count).toBe(1);
+  });
+
+  it("caregiver with viewOnly cannot mark as read", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId: aliceId } = await createAccount(t, { name: "Alice" });
+    const { accountId: bobId } = await createAccount(t, { name: "Bob" });
+    const { accountId: caregiverId, asUser: asCaregiver } = await createAccount(t, {
+      name: "Caregiver",
+      role: "caregiver",
+    });
+
+    const { conversationId } = await createConversation(t, {
+      participants: [aliceId, bobId],
+      caregiverAccess: true,
+    });
+
+    await createCaregiverRelation(t, {
+      accountId: aliceId,
+      caregiverAccountId: caregiverId,
+      permissions: "viewOnly",
+      inviteStatus: "accepted",
+    });
+
+    await expect(
+      asCaregiver.mutation(api.messages.markAsRead, { conversationId })
+    ).rejects.toThrow("Not a participant");
+  });
+
+  it("resets denormalized unread count on markAsRead", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId: aliceId, asUser: asAlice } = await createAccount(t, { name: "Alice" });
+    const { accountId: bobId } = await createAccount(t, { name: "Bob" });
+
+    const { conversationId } = await createConversation(t, { participants: [aliceId, bobId] });
+
+    await createMessage(t, { conversationId, senderId: bobId, content: "Msg 1", readBy: [bobId] });
+    await createMessage(t, { conversationId, senderId: bobId, content: "Msg 2", readBy: [bobId] });
+    await createUnreadCount(t, { conversationId, accountId: aliceId, count: 2 });
+
+    await asAlice.mutation(api.messages.markAsRead, { conversationId });
+
+    // Verify unread count is reset
+    const count = await asAlice.query(api.messages.getUnreadCount, {});
+    expect(count).toBe(0);
+  });
+
   it("non-participant is rejected", async () => {
     const t = convexTest(schema, modules);
     const { accountId: aliceId } = await createAccount(t, { name: "Alice" });
@@ -606,6 +708,9 @@ describe("getUnreadCount", () => {
     await createMessage(t, { conversationId, senderId: bobId, content: "Msg 2", readBy: [bobId] });
     await createMessage(t, { conversationId, senderId: bobId, content: "Msg 3", readBy: [bobId] });
 
+    // Seed denormalized unread count
+    await createUnreadCount(t, { conversationId, accountId: aliceId, count: 3 });
+
     const count = await asAlice.query(api.messages.getUnreadCount, {});
     expect(count).toBe(3);
   });
@@ -620,7 +725,7 @@ describe("getUnreadCount", () => {
       lastMessageAt: Date.now(),
     });
 
-    // Alice sends a message (not in her own readBy for some reason)
+    // Alice sends a message — no unreadCounts entry for Alice (sender is excluded)
     await createMessage(t, { conversationId, senderId: aliceId, content: "My msg", readBy: [] });
 
     const count = await asAlice.query(api.messages.getUnreadCount, {});
