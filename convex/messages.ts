@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { auth } from "./auth";
+import { isBlocked } from "./blockedUsers";
 
 // Get all conversations for the current user (with pagination)
 export const getMyConversations = query({
@@ -242,6 +243,13 @@ export const startConversation = mutation({
     // Include current user in participants
     const allParticipants = [...new Set([account._id, ...args.participantIds])];
 
+    // Check if any participant has blocked the other
+    for (const participantId of args.participantIds) {
+      if (await isBlocked(ctx, account._id, participantId)) {
+        throw new Error("Cannot start a conversation with this user");
+      }
+    }
+
     // Check if DM already exists between these participants
     if (allParticipants.length === 2) {
       const existingConversations = await ctx.db
@@ -296,9 +304,20 @@ export const sendMessage = mutation({
       throw new Error("Account not found");
     }
 
+    if (args.content.length > 5000) {
+      throw new Error("Message must be 5,000 characters or less");
+    }
+
     const conversation = await ctx.db.get(args.conversationId);
     if (!conversation) {
       throw new Error("Conversation not found");
+    }
+
+    // Check if any participant has blocked the sender (or vice versa)
+    for (const participantId of conversation.participants) {
+      if (participantId !== account._id && await isBlocked(ctx, account._id, participantId)) {
+        throw new Error("Cannot send messages in this conversation");
+      }
     }
 
     // Check if user can send messages

@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { WarriorList } from "@/components/warrior-card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
 import { WarriorStatus } from "@/components/status-selector";
+import { toast } from "sonner";
 
 function PublicProfileContent() {
   const params = useParams();
@@ -18,6 +20,9 @@ function PublicProfileContent() {
   const account = useQuery(api.accounts.getAccount, { accountId: accountId as any });
   const currentUser = useQuery(api.accounts.getCurrentAccount);
   const warriors = useQuery(api.warriors.getWarriorsByAccount, { accountId: accountId as any });
+  const isBlockedByMe = useQuery(api.blockedUsers.isUserBlocked, { accountId: accountId as any });
+  const blockUser = useMutation(api.blockedUsers.blockUser);
+  const unblockUser = useMutation(api.blockedUsers.unblockUser);
 
   // Loading state
   if (account === undefined || warriors === undefined) {
@@ -87,9 +92,33 @@ function PublicProfileContent() {
                 </p>
               )}
             </div>
-            <Link href={`/messages?to=${account._id}`}>
-              <Button>Send Message</Button>
-            </Link>
+            <div className="flex gap-2">
+              {!isBlockedByMe && (
+                <Link href={`/messages?to=${account._id}`}>
+                  <Button>Send Message</Button>
+                </Link>
+              )}
+              <Button
+                variant={isBlockedByMe ? "outline" : "ghost"}
+                size="sm"
+                className={isBlockedByMe ? "text-destructive border-destructive" : "text-muted-foreground"}
+                onClick={async () => {
+                  try {
+                    if (isBlockedByMe) {
+                      await unblockUser({ accountId: accountId as any });
+                      toast.success("User unblocked");
+                    } else {
+                      await blockUser({ accountId: accountId as any });
+                      toast.success("User blocked");
+                    }
+                  } catch (error) {
+                    toast.error("Failed to update block status");
+                  }
+                }}
+              >
+                {isBlockedByMe ? "Unblock" : "Block"}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
