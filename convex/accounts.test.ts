@@ -39,10 +39,10 @@ describe("getAccount", () => {
       email: "alice@example.com",
     });
 
-    const result = await asUser.query(api.accounts.getAccount, { accountId });
+    const result = await asUser.query(api.accounts.getAccount, { accountId }) as any;
     expect(result).not.toBeNull();
-    expect(result!.email).toBe("alice@example.com");
-    expect(result!.privacySettings).toBeDefined();
+    expect(result.email).toBe("alice@example.com");
+    expect(result.privacySettings).toBeDefined();
   });
 
   it("returns filtered public fields for other users", async () => {
@@ -299,11 +299,11 @@ describe("getAccountByEmail", () => {
 
     const result = await asUser.query(api.accounts.getAccountByEmail, {
       email: "alice@example.com",
-    });
+    }) as any;
 
     expect(result).not.toBeNull();
-    expect(result!.name).toBe("Alice");
-    expect(result!.email).toBe("alice@example.com");
+    expect(result.name).toBe("Alice");
+    expect(result.email).toBe("alice@example.com");
   });
 
   it("returns minimal fields for other users' emails", async () => {

@@ -90,6 +90,36 @@ export const isUserBlocked = query({
   },
 });
 
+// Get bidirectional block status between current user and another account
+export const getBlockStatus = query({
+  args: { accountId: v.id("accounts") },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) return { blockedByMe: false, blockedByThem: false };
+
+    const account = await ctx.db
+      .query("accounts")
+      .withIndex("by_authId", (q) => q.eq("authId", userId))
+      .first();
+
+    if (!account) return { blockedByMe: false, blockedByThem: false };
+
+    const blockedByMe = await ctx.db
+      .query("blockedUsers")
+      .withIndex("by_blocker", (q) => q.eq("blockerId", account._id))
+      .filter((q) => q.eq(q.field("blockedId"), args.accountId))
+      .first();
+
+    const blockedByThem = await ctx.db
+      .query("blockedUsers")
+      .withIndex("by_blocker", (q) => q.eq("blockerId", args.accountId))
+      .filter((q) => q.eq(q.field("blockedId"), account._id))
+      .first();
+
+    return { blockedByMe: !!blockedByMe, blockedByThem: !!blockedByThem };
+  },
+});
+
 // Block a user
 export const blockUser = mutation({
   args: { accountId: v.id("accounts") },

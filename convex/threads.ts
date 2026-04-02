@@ -476,23 +476,24 @@ export const likeComment = mutation({
       .first();
 
     if (existingLike) {
-      // Unlike: remove the like record and decrement
+      // Unlike: remove the like record
       await ctx.db.delete(existingLike._id);
-      await ctx.db.patch(args.commentId, {
-        likeCount: Math.max(0, comment.likeCount - 1),
-      });
-      return { liked: false };
     } else {
-      // Like: create a like record and increment
+      // Like: create a like record
       await ctx.db.insert("commentLikes", {
         commentId: args.commentId,
         accountId: account._id,
         createdAt: Date.now(),
       });
-      await ctx.db.patch(args.commentId, {
-        likeCount: comment.likeCount + 1,
-      });
-      return { liked: true };
     }
+
+    // Derive count from source of truth to avoid drift
+    const likes = await ctx.db
+      .query("commentLikes")
+      .withIndex("by_comment", (q) => q.eq("commentId", args.commentId))
+      .collect();
+    await ctx.db.patch(args.commentId, { likeCount: likes.length });
+
+    return { liked: !existingLike };
   },
 });

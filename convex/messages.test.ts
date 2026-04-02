@@ -45,7 +45,7 @@ describe("getMyConversations", () => {
   it("returns empty for unauthenticated user", async () => {
     const t = convexTest(schema, modules);
     const result = await t.query(api.messages.getMyConversations, {});
-    expect(result).toEqual([]);
+    expect(result).toEqual({ conversations: [], nextCursor: undefined, hasMore: false });
   });
 
   it("enriches with last message and unread count", async () => {

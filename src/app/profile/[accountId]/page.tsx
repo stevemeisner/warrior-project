@@ -20,9 +20,12 @@ function PublicProfileContent() {
   const account = useQuery(api.accounts.getAccount, { accountId: accountId as any });
   const currentUser = useQuery(api.accounts.getCurrentAccount);
   const warriors = useQuery(api.warriors.getWarriorsByAccount, { accountId: accountId as any });
-  const isBlockedByMe = useQuery(api.blockedUsers.isUserBlocked, { accountId: accountId as any });
+  const blockStatus = useQuery(api.blockedUsers.getBlockStatus, { accountId: accountId as any });
   const blockUser = useMutation(api.blockedUsers.blockUser);
   const unblockUser = useMutation(api.blockedUsers.unblockUser);
+  const isBlockedByMe = blockStatus?.blockedByMe ?? false;
+  const isBlockedByThem = blockStatus?.blockedByThem ?? false;
+  const isAnyBlock = isBlockedByMe || isBlockedByThem;
 
   // Loading state
   if (account === undefined || warriors === undefined) {
@@ -93,10 +96,15 @@ function PublicProfileContent() {
               )}
             </div>
             <div className="flex gap-2">
-              {!isBlockedByMe && (
+              {!isAnyBlock && (
                 <Link href={`/messages?to=${account._id}`}>
                   <Button>Send Message</Button>
                 </Link>
+              )}
+              {isBlockedByThem && !isBlockedByMe && (
+                <p className="text-sm text-muted-foreground self-center">
+                  This user is not accepting messages
+                </p>
               )}
               <Button
                 variant={isBlockedByMe ? "outline" : "ghost"}

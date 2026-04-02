@@ -11,15 +11,17 @@ export const getMyConversations = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const emptyResult = { conversations: [] as any[], nextCursor: undefined as number | undefined, hasMore: false };
+
     const userId = await auth.getUserId(ctx);
-    if (!userId) return [];
+    if (!userId) return emptyResult;
 
     const account = await ctx.db
       .query("accounts")
       .withIndex("by_authId", (q) => q.eq("authId", userId))
       .first();
 
-    if (!account) return [];
+    if (!account) return emptyResult;
 
     // Get conversations where user is a participant (with cursor-based pagination)
     // Note: This filters in memory since Convex doesn't support array membership queries well

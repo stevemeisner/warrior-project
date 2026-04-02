@@ -12,6 +12,8 @@ async function isConnected(
   viewerAccountId: Id<"accounts">,
   familyAccountId: Id<"accounts">
 ): Promise<boolean> {
+  if (viewerAccountId === familyAccountId) return false;
+
   // Direct caregiver relationship
   const directRelation = await ctx.db
     .query("caregivers")
@@ -371,20 +373,47 @@ export const getPublicWarriors = query({
         .first();
 
       if (viewerAccount) {
+        // Pre-compute the set of family account IDs the viewer is connected to
+        // instead of calling isConnected per warrior (O(N*M) -> O(M) queries)
+        const connectedFamilyIds = new Set<string>();
+
+        // Families where viewer is a direct caregiver
+        const directRelations = await ctx.db
+          .query("caregivers")
+          .withIndex("by_caregiver", (q) => q.eq("caregiverAccountId", viewerAccount._id))
+          .filter((q) => q.eq(q.field("inviteStatus"), "accepted"))
+          .collect();
+        for (const r of directRelations) {
+          connectedFamilyIds.add(r.accountId);
+        }
+
+        // Families that share a caregiver with the viewer
+        const viewersCaregivers = await ctx.db
+          .query("caregivers")
+          .withIndex("by_account", (q) => q.eq("accountId", viewerAccount._id))
+          .filter((q) => q.eq(q.field("inviteStatus"), "accepted"))
+          .collect();
+        for (const cg of viewersCaregivers) {
+          const otherFamilies = await ctx.db
+            .query("caregivers")
+            .withIndex("by_caregiver", (q) => q.eq("caregiverAccountId", cg.caregiverAccountId))
+            .filter((q) => q.eq(q.field("inviteStatus"), "accepted"))
+            .collect();
+          for (const f of otherFamilies) {
+            if (f.accountId !== viewerAccount._id) {
+              connectedFamilyIds.add(f.accountId);
+            }
+          }
+        }
+
         const allConnectionsWarriors = await ctx.db
           .query("warriors")
           .withIndex("by_visibility", (q) => q.eq("visibility", "connections"))
           .take(limit * 2);
 
-        // Filter to only those the viewer is connected to
-        const checkedConnections = await Promise.all(
-          allConnectionsWarriors.map(async (w) => {
-            if (w.accountId === viewerAccount._id) return w; // Own warriors
-            const connected = await isConnected(ctx, viewerAccount._id, w.accountId);
-            return connected ? w : null;
-          })
+        connectionsWarriors = allConnectionsWarriors.filter(
+          (w) => w.accountId === viewerAccount._id || connectedFamilyIds.has(w.accountId)
         );
-        connectionsWarriors = checkedConnections.filter(Boolean) as typeof publicWarriors;
       }
     }
 

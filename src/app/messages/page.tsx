@@ -47,7 +47,7 @@ function MessagesContent() {
 
       // Find existing conversation with this user
       const existingConversation = conversations.find((conv) =>
-        conv.participants?.some((p) => p?._id?.toString() === toAccountId)
+        conv.participants?.some((p: any) => p?._id?.toString() === toAccountId)
       );
 
       if (existingConversation) {
@@ -127,11 +127,11 @@ function MessagesContent() {
               {conversations && conversations.length > 0 ? (
                 conversations.map((conv) => {
                   const otherParticipant = conv.participants?.find(
-                    (p) => p !== null
+                    (p: any) => p !== null
                   );
                   const initials = otherParticipant?.name
                     ?.split(" ")
-                    .map((n) => n[0])
+                    .map((n: string) => n[0])
                     .join("")
                     .toUpperCase()
                     .slice(0, 2) || "?";

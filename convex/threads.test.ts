@@ -643,18 +643,21 @@ describe("deleteComment", () => {
 describe("likeComment", () => {
   it("increments likeCount for authenticated user", async () => {
     const t = convexTest(schema, modules);
-    const { accountId, asUser } = await createAccount(t, { name: "Alice" });
-    const { threadId } = await createThread(t, { authorId: accountId });
+    const { accountId: aliceId, asUser: asAlice } = await createAccount(t, { name: "Alice" });
+    const { accountId: bobId, asUser: asBob } = await createAccount(t, { name: "Bob" });
+    const { threadId } = await createThread(t, { authorId: aliceId });
     const { commentId } = await createComment(t, {
       threadId,
-      authorId: accountId,
-      likeCount: 3,
+      authorId: aliceId,
+      likeCount: 0,
     });
 
-    await asUser.mutation(api.threads.likeComment, { commentId });
+    // Two different users like the comment
+    await asAlice.mutation(api.threads.likeComment, { commentId });
+    await asBob.mutation(api.threads.likeComment, { commentId });
 
     const comment = await t.run(async (ctx) => ctx.db.get(commentId));
-    expect(comment!.likeCount).toBe(4);
+    expect(comment!.likeCount).toBe(2);
   });
 
   it("throws for unauthenticated user", async () => {
