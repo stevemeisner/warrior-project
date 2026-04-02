@@ -82,6 +82,22 @@ export const createSupportRequest = mutation({
         message: `${account.name} is asking for help: ${args.helpTypes.join(", ")}`,
         relatedAccountId: account._id,
       });
+
+      // Send email if caregiver has emailSupportRequests enabled
+      const caregiverAccount = await ctx.db.get(relation.caregiverAccountId);
+      if (
+        caregiverAccount?.email &&
+        (caregiverAccount.notificationPreferences?.emailSupportRequests ?? true)
+      ) {
+        await ctx.scheduler.runAfter(0, internal.email.sendSupportRequestEmail, {
+          toEmail: caregiverAccount.email,
+          familyName: account.name,
+          helpTypes: args.helpTypes,
+          location: account.location
+            ? [account.location.city, account.location.state].filter(Boolean).join(", ") || undefined
+            : undefined,
+        });
+      }
     }
 
     return requestId;

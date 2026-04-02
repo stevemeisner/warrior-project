@@ -373,6 +373,10 @@ export const sendMessage = mutation({
     });
 
     // Create notifications for other participants
+    const preview = args.content.length > 100
+      ? args.content.substring(0, 100) + "..."
+      : args.content;
+
     for (const participantId of conversation.participants) {
       if (participantId !== account._id) {
         await ctx.runMutation(internal.notifications.createNotification, {
@@ -383,6 +387,19 @@ export const sendMessage = mutation({
           relatedAccountId: account._id,
           relatedConversationId: args.conversationId,
         });
+
+        // Send email if participant has emailNewMessages enabled
+        const participantAccount = await ctx.db.get(participantId);
+        if (
+          participantAccount?.email &&
+          (participantAccount.notificationPreferences?.emailNewMessages ?? true)
+        ) {
+          await ctx.scheduler.runAfter(0, internal.email.sendNewMessageEmail, {
+            toEmail: participantAccount.email,
+            senderName: account.name,
+            preview,
+          });
+        }
       }
     }
 

@@ -90,6 +90,21 @@ export const updateStatus = mutation({
         relatedAccountId: account._id,
         relatedWarriorId: args.warriorId,
       });
+
+      // Send email if caregiver has emailStatusChanges enabled
+      const caregiverAccount = await ctx.db.get(relation.caregiverAccountId);
+      if (
+        caregiverAccount?.email &&
+        caregiverAccount._id !== account._id &&
+        (caregiverAccount.notificationPreferences?.emailStatusChanges ?? true)
+      ) {
+        await ctx.scheduler.runAfter(0, internal.email.sendStatusChangeEmail, {
+          toEmail: caregiverAccount.email,
+          warriorName: warrior.name,
+          status: args.status,
+          context: args.context,
+        });
+      }
     }
 
     return statusUpdateId;

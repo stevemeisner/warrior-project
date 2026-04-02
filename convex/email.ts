@@ -180,6 +180,146 @@ export const sendEmail = action({
   },
 });
 
+// Internal action for status change emails (called via scheduler)
+export const sendStatusChangeEmail = internalAction({
+  args: {
+    toEmail: v.string(),
+    warriorName: v.string(),
+    status: v.string(),
+    context: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      console.warn("RESEND_API_KEY not set, skipping status change email");
+      return { success: false, error: "API key not configured" };
+    }
+
+    const emailContent = emailTemplates.statusChange(args.warriorName, args.status, args.context);
+
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "Warrior Project <noreply@warriorproject.com>",
+          to: args.toEmail,
+          subject: emailContent.subject,
+          html: emailContent.html,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("Failed to send status change email:", error);
+        return { success: false, error };
+      }
+
+      console.log(`Status change email sent to ${args.toEmail}`);
+      return { success: true };
+    } catch (error) {
+      console.error("Status change email error:", error);
+      return { success: false, error: String(error) };
+    }
+  },
+});
+
+// Internal action for new message emails (called via scheduler)
+export const sendNewMessageEmail = internalAction({
+  args: {
+    toEmail: v.string(),
+    senderName: v.string(),
+    preview: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      console.warn("RESEND_API_KEY not set, skipping new message email");
+      return { success: false, error: "API key not configured" };
+    }
+
+    const emailContent = emailTemplates.newMessage(args.senderName, args.preview);
+
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "Warrior Project <noreply@warriorproject.com>",
+          to: args.toEmail,
+          subject: emailContent.subject,
+          html: emailContent.html,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("Failed to send new message email:", error);
+        return { success: false, error };
+      }
+
+      console.log(`New message email sent to ${args.toEmail}`);
+      return { success: true };
+    } catch (error) {
+      console.error("New message email error:", error);
+      return { success: false, error: String(error) };
+    }
+  },
+});
+
+// Internal action for support request emails (called via scheduler)
+export const sendSupportRequestEmail = internalAction({
+  args: {
+    toEmail: v.string(),
+    familyName: v.string(),
+    helpTypes: v.array(v.string()),
+    location: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      console.warn("RESEND_API_KEY not set, skipping support request email");
+      return { success: false, error: "API key not configured" };
+    }
+
+    const emailContent = emailTemplates.supportRequest(args.familyName, args.helpTypes, args.location);
+
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "Warrior Project <noreply@warriorproject.com>",
+          to: args.toEmail,
+          subject: emailContent.subject,
+          html: emailContent.html,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("Failed to send support request email:", error);
+        return { success: false, error };
+      }
+
+      console.log(`Support request email sent to ${args.toEmail}`);
+      return { success: true };
+    } catch (error) {
+      console.error("Support request email error:", error);
+      return { success: false, error: String(error) };
+    }
+  },
+});
+
 // Internal action for caregiver invite emails (called via scheduler)
 export const sendCaregiverInviteEmail = internalAction({
   args: {
