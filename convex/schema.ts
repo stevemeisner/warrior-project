@@ -76,6 +76,9 @@ export default defineSchema({
     authProvider: authProviders,
     authId: v.string(), // External auth provider ID
     profilePhoto: v.optional(v.string()),
+    profilePhotoStorageId: v.optional(v.id("_storage")), // Convex file storage
+    isAdmin: v.optional(v.boolean()), // Admin flag for moderation
+    onboardingComplete: v.optional(v.boolean()), // Whether user completed guided onboarding
 
     // Location for map features (optional)
     location: v.optional(v.object({
@@ -118,6 +121,7 @@ export default defineSchema({
     currentStatus: statusValues,
     isFeather: v.boolean(), // Whether this warrior has passed away
     profilePhoto: v.optional(v.string()),
+    profilePhotoStorageId: v.optional(v.id("_storage")), // Convex file storage
 
     // Additional info
     bio: v.optional(v.string()),
@@ -279,4 +283,37 @@ export default defineSchema({
   })
     .index("by_blocker", ["blockerId"])
     .index("by_blocked", ["blockedId"]),
+
+  // Reports - user-submitted reports for moderation
+  reports: defineTable({
+    reporterId: v.id("accounts"),
+    targetType: v.union(
+      v.literal("thread"),
+      v.literal("comment"),
+      v.literal("account"),
+      v.literal("message")
+    ),
+    targetId: v.string(), // ID of the reported entity
+    reason: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("reviewed"),
+      v.literal("dismissed")
+    ),
+    reviewedBy: v.optional(v.id("accounts")),
+    createdAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_target", ["targetType", "targetId"])
+    .index("by_reporter", ["reporterId"]),
+
+  // Typing indicators - transient presence data for messages
+  typingIndicators: defineTable({
+    conversationId: v.id("conversations"),
+    accountId: v.id("accounts"),
+    expiresAt: v.number(), // Auto-expire after a few seconds
+  })
+    .index("by_conversation", ["conversationId"])
+    .index("by_account", ["accountId"])
+    .index("by_expires", ["expiresAt"]),
 });

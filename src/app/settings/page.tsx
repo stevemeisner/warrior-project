@@ -19,11 +19,13 @@ import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Settings, ShieldCheck, Bell, User, Ban } from "lucide-react";
+import { ImageUpload } from "@/components/image-upload";
 
 function SettingsContent() {
   const account = useQuery(api.accounts.getCurrentAccount);
   const blockedUsers = useQuery(api.blockedUsers.getBlockedUsers);
   const updateAccount = useMutation(api.accounts.updateAccount);
+  const updateAccountPhoto = useMutation(api.storage.updateAccountPhoto);
   const updatePrivacy = useMutation(api.accounts.updatePrivacySettings);
   const updateNotifications = useMutation(api.accounts.updateNotificationPreferences);
   const unblockUser = useMutation(api.blockedUsers.unblockUser);
@@ -173,6 +175,20 @@ function SettingsContent() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex items-center gap-4">
+            <ImageUpload
+              currentImageUrl={account.profilePhoto}
+              fallbackText={account.name?.[0]?.toUpperCase() || "?"}
+              onUploadComplete={async (storageId) => {
+                await updateAccountPhoto({ storageId: storageId as any });
+              }}
+              size="lg"
+            />
+            <div className="text-sm text-muted-foreground">
+              Click to upload a profile photo.<br />
+              Max 5MB, JPG/PNG recommended.
+            </div>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="profileName">Name</Label>
             <Input

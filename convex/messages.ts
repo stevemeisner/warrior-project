@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { auth } from "./auth";
 import { isBlocked } from "./blockedUsers";
+import { checkRateLimit } from "./rateLimit";
 
 // Get all conversations for the current user (with pagination)
 export const getMyConversations = query({
@@ -309,6 +310,9 @@ export const sendMessage = mutation({
     if (args.content.length > 5000) {
       throw new Error("Message must be 5,000 characters or less");
     }
+
+    // Rate limit check
+    await checkRateLimit(ctx, "sendMessage", account._id);
 
     const conversation = await ctx.db.get(args.conversationId);
     if (!conversation) {

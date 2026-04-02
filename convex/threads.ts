@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { auth } from "./auth";
 import { threadCategories } from "./schema";
+import { checkRateLimit } from "./rateLimit";
 
 // Get threads with optional filtering
 export const getThreads = query({
@@ -142,6 +143,9 @@ export const createThread = mutation({
     if (args.content.length > 10000) {
       throw new Error("Content must be 10,000 characters or less");
     }
+
+    // Rate limit check
+    await checkRateLimit(ctx, "createThread", account._id);
 
     const now = Date.now();
 
@@ -309,6 +313,9 @@ export const addComment = mutation({
     if (args.content.length > 5000) {
       throw new Error("Comment must be 5,000 characters or less");
     }
+
+    // Rate limit check
+    await checkRateLimit(ctx, "addComment", account._id);
 
     const now = Date.now();
 

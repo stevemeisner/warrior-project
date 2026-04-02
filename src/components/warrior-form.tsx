@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { ImageUpload } from "@/components/image-upload";
 
 interface WarriorFormProps {
   warrior?: {
@@ -25,6 +26,7 @@ interface WarriorFormProps {
     dateOfBirth?: string;
     condition?: string;
     bio?: string;
+    profilePhoto?: string;
     visibility: "public" | "connections" | "private";
   };
   onSuccess?: () => void;
@@ -34,6 +36,7 @@ export function WarriorForm({ warrior, onSuccess }: WarriorFormProps) {
   const router = useRouter();
   const createWarrior = useMutation(api.warriors.createWarrior);
   const updateWarrior = useMutation(api.warriors.updateWarrior);
+  const updateWarriorPhoto = useMutation(api.storage.updateWarriorPhoto);
 
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState(warrior?.name || "");
@@ -90,6 +93,24 @@ export function WarriorForm({ warrior, onSuccess }: WarriorFormProps) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {warrior && (
+            <div className="flex items-center gap-4">
+              <ImageUpload
+                currentImageUrl={warrior.profilePhoto}
+                fallbackText={warrior.name?.[0]?.toUpperCase() || "?"}
+                onUploadComplete={async (storageId) => {
+                  await updateWarriorPhoto({
+                    warriorId: warrior._id as any,
+                    storageId: storageId as any,
+                  });
+                }}
+                size="lg"
+              />
+              <div className="text-sm text-muted-foreground">
+                Upload a photo for your warrior
+              </div>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="name">Name *</Label>
             <Input

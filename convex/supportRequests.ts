@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { auth } from "./auth";
+import { checkRateLimit } from "./rateLimit";
 
 const helpTypeValues = [
   "meals",
@@ -46,6 +47,9 @@ export const createSupportRequest = mutation({
     if (args.description && args.description.length > 5000) {
       throw new Error("Description must be 5000 characters or less");
     }
+
+    // Rate limit check
+    await checkRateLimit(ctx, "createSupportRequest", account._id);
 
     // If warrior specified, verify ownership
     if (args.warriorId) {

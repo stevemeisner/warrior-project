@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { StatusBadge, WarriorStatus } from "@/components/status-selector";
 import { MapWarriorListPanel } from "@/components/map-warrior-list-panel";
+import Supercluster from "supercluster";
 
 export interface ViewportBounds {
   north: number;
@@ -26,30 +27,106 @@ export function isWithinBounds(
   bounds: ViewportBounds
 ): boolean {
   const latInRange = lat >= bounds.south && lat <= bounds.north;
-  // Handle antimeridian crossing
   const lngInRange = bounds.west <= bounds.east
     ? lng >= bounds.west && lng <= bounds.east
     : lng >= bounds.west || lng <= bounds.east;
   return latInRange && lngInRange;
 }
 
-// Note: In production, use environment variable
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+
+const STATUS_COLORS: Record<WarriorStatus, string> = {
+  thriving: "#7cb086",
+  stable: "#4a90a4",
+  struggling: "#e5a85f",
+  hospitalized: "#d97459",
+  needsSupport: "#9b7ebd",
+  feather: "#a8a8a8",
+};
+
+const STATUS_EMOJIS: Record<WarriorStatus, string> = {
+  thriving: "\ud83c\udf1f",
+  stable: "\ud83d\udc99",
+  struggling: "\ud83c\udf27\ufe0f",
+  hospitalized: "\ud83c\udfe5",
+  needsSupport: "\ud83d\udc9c",
+  feather: "\ud83e\udeb6",
+};
+
+interface WarriorPoint {
+  type: "Feature";
+  geometry: { type: "Point"; coordinates: [number, number] };
+  properties: {
+    warriorId: string;
+    name: string;
+    status: WarriorStatus;
+    condition?: string;
+    profilePhoto?: string;
+    accountId: string;
+    city?: string;
+    state?: string;
+  };
+}
 
 function MapContent() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
   const [selectedWarrior, setSelectedWarrior] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState<WarriorStatus | "all">("all");
   const [mapReady, setMapReady] = useState(false);
   const [viewportBounds, setViewportBounds] = useState<ViewportBounds | null>(null);
+  const [zoom, setZoom] = useState(3);
 
   const warriors = useQuery(api.warriors.getPublicWarriors, {
     status: statusFilter === "all" ? undefined : statusFilter,
     limit: 100,
   });
 
-  // Filter warriors by current viewport
+  // Build GeoJSON features from warriors
+  const warriorFeatures: WarriorPoint[] = useMemo(() => {
+    if (!warriors) return [];
+    return warriors
+      .filter((w) => w.account?.location?.latitude != null && w.account?.location?.longitude != null)
+      .map((w) => ({
+        type: "Feature" as const,
+        geometry: {
+          type: "Point" as const,
+          coordinates: [w.account!.location!.longitude!, w.account!.location!.latitude!] as [number, number],
+        },
+        properties: {
+          warriorId: w._id,
+          name: w.name,
+          status: w.currentStatus as WarriorStatus,
+          condition: w.condition,
+          profilePhoto: w.profilePhoto,
+          accountId: w.accountId,
+          city: w.account?.location?.city,
+          state: w.account?.location?.state,
+        },
+      }));
+  }, [warriors]);
+
+  // Create supercluster instance
+  const cluster = useMemo(() => {
+    const sc = new Supercluster({
+      radius: 60,
+      maxZoom: 14,
+    });
+    sc.load(warriorFeatures);
+    return sc;
+  }, [warriorFeatures]);
+
+  // Get clusters for current viewport
+  const clusters = useMemo(() => {
+    if (!viewportBounds || !cluster) return [];
+    return cluster.getClusters(
+      [viewportBounds.west, viewportBounds.south, viewportBounds.east, viewportBounds.north],
+      Math.floor(zoom)
+    );
+  }, [cluster, viewportBounds, zoom]);
+
+  // Filter warriors by current viewport (for the list panel)
   const warriorsInView = useMemo(() => {
     if (!warriors || !viewportBounds) return [];
     return warriors.filter((warrior) => {
@@ -59,11 +136,9 @@ function MapContent() {
     });
   }, [warriors, viewportBounds]);
 
-  // Handle clicking a warrior in the list panel
   const handleWarriorListClick = (warrior: any) => {
     const loc = warrior.account?.location;
     if (loc?.longitude == null || loc?.latitude == null || !map.current) return;
-
     map.current.flyTo({
       center: [loc.longitude, loc.latitude],
       zoom: 12,
@@ -72,58 +147,44 @@ function MapContent() {
     setSelectedWarrior(warrior);
   };
 
+  const updateViewport = useCallback(() => {
+    if (!map.current) return;
+    const bounds = map.current.getBounds();
+    if (bounds) {
+      setViewportBounds({
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        west: bounds.getWest(),
+      });
+    }
+    setZoom(map.current.getZoom());
+  }, []);
+
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
-
-    if (!mapboxgl.accessToken) {
-      console.warn("Mapbox token not set. Map will not display.");
-      return;
-    }
+    if (!mapboxgl.accessToken) return;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/light-v11",
-      center: [-98.5795, 39.8283], // Center of US
+      center: [-98.5795, 39.8283],
       zoom: 3,
     });
 
     map.current.on("load", () => {
       setMapReady(true);
-      // Set initial viewport bounds
-      const bounds = map.current?.getBounds();
-      if (bounds) {
-        setViewportBounds({
-          north: bounds.getNorth(),
-          south: bounds.getSouth(),
-          east: bounds.getEast(),
-          west: bounds.getWest(),
-        });
-      }
+      updateViewport();
     });
 
-    // Update viewport bounds when map is panned/zoomed
-    map.current.on("moveend", () => {
-      const bounds = map.current?.getBounds();
-      if (bounds) {
-        setViewportBounds({
-          north: bounds.getNorth(),
-          south: bounds.getSouth(),
-          east: bounds.getEast(),
-          west: bounds.getWest(),
-        });
-      }
-    });
+    map.current.on("moveend", updateViewport);
+    map.current.on("zoomend", updateViewport);
 
-    // Add navigation controls
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
-
-    // Add geolocation control
     map.current.addControl(
       new mapboxgl.GeolocateControl({
-        positionOptions: {
-          enableHighAccuracy: true,
-        },
+        positionOptions: { enableHighAccuracy: true },
         trackUserLocation: true,
         showUserHeading: true,
       }),
@@ -136,73 +197,91 @@ function MapContent() {
         map.current = null;
       }
     };
-  }, []);
+  }, [updateViewport]);
 
-  // Add markers for warriors
+  // Render clusters and markers
   useEffect(() => {
-    if (!map.current || !mapReady || !warriors) return;
+    if (!map.current || !mapReady) return;
 
     // Remove existing markers
-    const existingMarkers = document.querySelectorAll(".warrior-marker");
-    existingMarkers.forEach((m) => m.remove());
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
 
-    // Add new markers
-    warriors.forEach((warrior) => {
-      if (!warrior.account?.location) return;
+    clusters.forEach((feature) => {
+      const [lng, lat] = feature.geometry.coordinates;
 
-      const { latitude, longitude } = warrior.account.location;
+      if (feature.properties.cluster) {
+        // Cluster marker
+        const count = feature.properties.point_count;
+        const el = document.createElement("div");
+        el.className = "cluster-marker";
+        const size = Math.min(60, 30 + Math.log2(count) * 8);
+        el.style.cssText = `
+          width: ${size}px;
+          height: ${size}px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #6366f1, #8b5cf6);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: ${Math.max(12, size / 3)}px;
+          box-shadow: 0 3px 8px rgba(99,102,241,0.4);
+          border: 3px solid rgba(255,255,255,0.8);
+          transition: transform 0.2s;
+        `;
+        el.textContent = String(count);
+        el.addEventListener("mouseenter", () => { el.style.transform = "scale(1.1)"; });
+        el.addEventListener("mouseleave", () => { el.style.transform = "scale(1)"; });
 
-      // Create custom marker element
-      const el = document.createElement("div");
-      el.className = "warrior-marker";
-      el.style.cssText = `
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: white;
-        border: 3px solid ${getStatusColor(warrior.currentStatus)};
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 20px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      `;
-      el.innerHTML = `<span aria-hidden="true">${getStatusEmoji(warrior.currentStatus)}</span>`;
+        el.addEventListener("click", () => {
+          if (!map.current) return;
+          const expansionZoom = cluster.getClusterExpansionZoom(feature.properties.cluster_id);
+          map.current.flyTo({
+            center: [lng, lat],
+            zoom: Math.min(expansionZoom, 16),
+            duration: 800,
+          });
+        });
 
-      el.addEventListener("click", () => {
-        setSelectedWarrior(warrior);
-      });
+        const marker = new mapboxgl.Marker(el).setLngLat([lng, lat]).addTo(map.current!);
+        markersRef.current.push(marker);
+      } else {
+        // Individual warrior marker
+        const props = feature.properties as WarriorPoint["properties"];
+        const el = document.createElement("div");
+        el.className = "warrior-marker";
+        el.style.cssText = `
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: white;
+          border: 3px solid ${STATUS_COLORS[props.status] || "#a8a8a8"};
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          font-size: 20px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+          transition: transform 0.2s;
+        `;
+        el.innerHTML = `<span aria-hidden="true">${STATUS_EMOJIS[props.status] || "?"}</span>`;
+        el.addEventListener("mouseenter", () => { el.style.transform = "scale(1.15)"; });
+        el.addEventListener("mouseleave", () => { el.style.transform = "scale(1)"; });
 
-      new mapboxgl.Marker(el)
-        .setLngLat([longitude, latitude])
-        .addTo(map.current!);
+        el.addEventListener("click", () => {
+          // Find the full warrior data
+          const warrior = warriors?.find((w) => w._id === props.warriorId);
+          if (warrior) setSelectedWarrior(warrior);
+        });
+
+        const marker = new mapboxgl.Marker(el).setLngLat([lng, lat]).addTo(map.current!);
+        markersRef.current.push(marker);
+      }
     });
-  }, [warriors, mapReady]);
-
-  const getStatusColor = (status: WarriorStatus) => {
-    const colors: Record<WarriorStatus, string> = {
-      thriving: "#7cb086",
-      stable: "#4a90a4",
-      struggling: "#e5a85f",
-      hospitalized: "#d97459",
-      needsSupport: "#9b7ebd",
-      feather: "#a8a8a8",
-    };
-    return colors[status] || "#a8a8a8";
-  };
-
-  const getStatusEmoji = (status: WarriorStatus) => {
-    const emojis: Record<WarriorStatus, string> = {
-      thriving: "🌟",
-      stable: "💙",
-      struggling: "🌧️",
-      hospitalized: "🏥",
-      needsSupport: "💜",
-      feather: "🪶",
-    };
-    return emojis[status] || "❓";
-  };
+  }, [clusters, mapReady, warriors, cluster]);
 
   const statusOptions: { value: WarriorStatus | "all"; label: string }[] = [
     { value: "all", label: "All Warriors" },
@@ -225,7 +304,7 @@ function MapContent() {
             onClick={() => setStatusFilter(option.value)}
           >
             {option.value !== "all" && (
-              <span className="mr-1" aria-hidden="true">{getStatusEmoji(option.value as WarriorStatus)}</span>
+              <span className="mr-1" aria-hidden="true">{STATUS_EMOJIS[option.value as WarriorStatus]}</span>
             )}
             {option.label}
           </Button>
@@ -268,13 +347,13 @@ function MapContent() {
       {/* Warrior Preview Card */}
       {selectedWarrior && (
         <div className="absolute bottom-20 left-4 right-4 md:bottom-4 md:left-auto md:right-4 md:w-80 z-10">
-          <Card>
+          <Card className="shadow-xl border-0 bg-card/95 backdrop-blur-sm">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12">
+                  <Avatar className="h-12 w-12 ring-2 ring-primary/20">
                     <AvatarImage src={selectedWarrior.profilePhoto} />
-                    <AvatarFallback className="bg-primary text-primary-foreground">
+                    <AvatarFallback className="bg-primary/15 text-primary font-semibold">
                       {selectedWarrior.name?.[0]?.toUpperCase()}
                     </AvatarFallback>
                   </Avatar>

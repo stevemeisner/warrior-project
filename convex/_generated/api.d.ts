@@ -15,11 +15,15 @@ import type * as caregivers from "../caregivers.js";
 import type * as email from "../email.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
+import type * as moderation from "../moderation.js";
 import type * as notifications from "../notifications.js";
+import type * as rateLimit from "../rateLimit.js";
 import type * as search from "../search.js";
 import type * as status from "../status.js";
+import type * as storage from "../storage.js";
 import type * as supportRequests from "../supportRequests.js";
 import type * as threads from "../threads.js";
+import type * as typing from "../typing.js";
 import type * as warriors from "../warriors.js";
 
 import type {
@@ -36,11 +40,15 @@ declare const fullApi: ApiFromModules<{
   email: typeof email;
   http: typeof http;
   messages: typeof messages;
+  moderation: typeof moderation;
   notifications: typeof notifications;
+  rateLimit: typeof rateLimit;
   search: typeof search;
   status: typeof status;
+  storage: typeof storage;
   supportRequests: typeof supportRequests;
   threads: typeof threads;
+  typing: typeof typing;
   warriors: typeof warriors;
 }>;
 

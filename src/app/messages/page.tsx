@@ -13,6 +13,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { MessagesSkeleton } from "@/components/skeleton-loaders";
 import { MessageCircle, Send, Inbox } from "lucide-react";
+import { useTypingIndicator } from "@/hooks/use-typing-indicator";
 
 function MessagesContent() {
   const searchParams = useSearchParams();
@@ -37,6 +38,8 @@ function MessagesContent() {
   const [isSending, setIsSending] = useState(false);
   const hasHandledToParam = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { handleTyping, stopTyping, typingUsers } = useTypingIndicator(selectedConversationId);
 
   // Handle ?to=accountId parameter - find or create conversation with that user
   useEffect(() => {
@@ -87,6 +90,7 @@ function MessagesContent() {
     if (!newMessage.trim() || !selectedConversationId) return;
 
     setIsSending(true);
+    stopTyping();
     try {
       await sendMessage({
         conversationId: selectedConversationId as any,
@@ -292,13 +296,22 @@ function MessagesContent() {
                 })}
                 <div ref={messagesEndRef} />
               </CardContent>
+              {typingUsers.length > 0 && (
+                <div className="px-6 py-1.5 text-xs text-muted-foreground animate-pulse">
+                  {typingUsers.map((u: any) => u?.name).filter(Boolean).join(", ")}{" "}
+                  {typingUsers.length === 1 ? "is" : "are"} typing...
+                </div>
+              )}
               <form
                 onSubmit={handleSendMessage}
                 className="p-4 border-t border-border/50 flex gap-2 bg-card"
               >
                 <Input
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={(e) => {
+                    setNewMessage(e.target.value);
+                    if (e.target.value.trim()) handleTyping();
+                  }}
                   placeholder="Type a message..."
                   disabled={isSending}
                   className="rounded-full border-border/50 bg-muted/30 focus-visible:ring-primary/30 px-4"

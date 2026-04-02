@@ -30,7 +30,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { CommunitySkeleton } from "@/components/skeleton-loaders";
-import { MessageSquare, Plus, Sparkles, MessageCircle, Eye } from "lucide-react";
+import { MessageSquare, Plus, Sparkles, MessageCircle, Eye, Flag, Pin, Lock, Trash2, Shield } from "lucide-react";
 
 type Category = "general" | "support" | "resources" | "celebrations" | "questions";
 
@@ -55,6 +55,11 @@ function CommunityContent() {
 
   const createThread = useMutation(api.threads.createThread);
   const addComment = useMutation(api.threads.addComment);
+  const submitReport = useMutation(api.moderation.submitReport);
+  const togglePin = useMutation(api.moderation.togglePinThread);
+  const toggleLock = useMutation(api.moderation.toggleLockThread);
+  const adminDeleteThread = useMutation(api.moderation.adminDeleteThread);
+  const isAdmin = useQuery(api.moderation.isCurrentUserAdmin);
 
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
@@ -69,6 +74,60 @@ function CommunityContent() {
 
   const [newComment, setNewComment] = useState("");
   const [isCommenting, setIsCommenting] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
+
+  const handleReport = async () => {
+    if (!reportReason.trim() || !selectedThreadId) return;
+    setIsReporting(true);
+    try {
+      await submitReport({
+        targetType: "thread",
+        targetId: selectedThreadId,
+        reason: reportReason.trim(),
+      });
+      toast.success("Report submitted. Thank you for helping keep our community safe.");
+      setReportReason("");
+      setIsReportOpen(false);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to submit report");
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
+  const handleTogglePin = async () => {
+    if (!selectedThreadId) return;
+    try {
+      const result = await togglePin({ threadId: selectedThreadId as any });
+      toast.success(result.isPinned ? "Thread pinned" : "Thread unpinned");
+    } catch (error) {
+      toast.error("Failed to update thread");
+    }
+  };
+
+  const handleToggleLock = async () => {
+    if (!selectedThreadId) return;
+    try {
+      const result = await toggleLock({ threadId: selectedThreadId as any });
+      toast.success(result.isLocked ? "Thread locked" : "Thread unlocked");
+    } catch (error) {
+      toast.error("Failed to update thread");
+    }
+  };
+
+  const handleAdminDelete = async () => {
+    if (!selectedThreadId) return;
+    if (!confirm("Are you sure you want to delete this thread? This cannot be undone.")) return;
+    try {
+      await adminDeleteThread({ threadId: selectedThreadId as any });
+      toast.success("Thread deleted");
+      setSelectedThreadId(null);
+    } catch (error) {
+      toast.error("Failed to delete thread");
+    }
+  };
 
   const handleCreateThread = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -345,6 +404,67 @@ function CommunityContent() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="whitespace-pre-wrap">{selectedThread.content}</p>
+
+                {/* Action buttons */}
+                <div className="flex items-center gap-2 border-t pt-3">
+                  {/* Report button */}
+                  <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="text-muted-foreground gap-1.5">
+                        <Flag className="h-3.5 w-3.5" />
+                        Report
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Report Thread</DialogTitle>
+                        <DialogDescription>
+                          Help us keep the community safe. Please describe why you&apos;re reporting this thread.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <Textarea
+                        value={reportReason}
+                        onChange={(e) => setReportReason(e.target.value)}
+                        placeholder="Reason for reporting..."
+                        rows={3}
+                      />
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setIsReportOpen(false)}>Cancel</Button>
+                        <Button
+                          variant="destructive"
+                          onClick={handleReport}
+                          disabled={isReporting || !reportReason.trim()}
+                        >
+                          {isReporting ? "Submitting..." : "Submit Report"}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  {selectedThread.isLocked && (
+                    <Badge variant="secondary" className="gap-1">
+                      <Lock className="h-3 w-3" /> Locked
+                    </Badge>
+                  )}
+
+                  {/* Admin actions */}
+                  {isAdmin && (
+                    <div className="flex items-center gap-1 ml-auto">
+                      <Badge variant="outline" className="gap-1 text-xs">
+                        <Shield className="h-3 w-3" /> Admin
+                      </Badge>
+                      <Button variant="ghost" size="sm" onClick={handleTogglePin} title={selectedThread.isPinned ? "Unpin" : "Pin"}>
+                        <Pin className={cn("h-3.5 w-3.5", selectedThread.isPinned && "text-primary")} />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={handleToggleLock} title={selectedThread.isLocked ? "Unlock" : "Lock"}>
+                        <Lock className={cn("h-3.5 w-3.5", selectedThread.isLocked && "text-orange-500")} />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={handleAdminDelete} title="Delete thread" className="text-destructive hover:text-destructive">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
 
                 <div className="border-t pt-4">
                   <h4 className="font-semibold mb-4">
