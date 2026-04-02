@@ -136,6 +136,13 @@ export const createThread = mutation({
       throw new Error("Account not found");
     }
 
+    if (args.title.length > 200) {
+      throw new Error("Title must be 200 characters or less");
+    }
+    if (args.content.length > 10000) {
+      throw new Error("Content must be 10,000 characters or less");
+    }
+
     const now = Date.now();
 
     const threadId = await ctx.db.insert("threads", {
@@ -299,6 +306,10 @@ export const addComment = mutation({
       throw new Error("This thread is locked");
     }
 
+    if (args.content.length > 5000) {
+      throw new Error("Comment must be 5,000 characters or less");
+    }
+
     const now = Date.now();
 
     const commentId = await ctx.db.insert("comments", {
@@ -433,7 +444,7 @@ export const deleteComment = mutation({
   },
 });
 
-// Like a comment
+// Like/unlike a comment (toggles)
 export const likeComment = mutation({
   args: { commentId: v.id("comments") },
   handler: async (ctx, args) => {
@@ -442,15 +453,46 @@ export const likeComment = mutation({
       throw new Error("Not authenticated");
     }
 
+    const account = await ctx.db
+      .query("accounts")
+      .withIndex("by_authId", (q) => q.eq("authId", userId))
+      .first();
+
+    if (!account) {
+      throw new Error("Account not found");
+    }
+
     const comment = await ctx.db.get(args.commentId);
     if (!comment) {
       throw new Error("Comment not found");
     }
 
-    await ctx.db.patch(args.commentId, {
-      likeCount: comment.likeCount + 1,
-    });
+    // Check if already liked
+    const existingLike = await ctx.db
+      .query("commentLikes")
+      .withIndex("by_comment_and_account", (q) =>
+        q.eq("commentId", args.commentId).eq("accountId", account._id)
+      )
+      .first();
 
-    return args.commentId;
+    if (existingLike) {
+      // Unlike: remove the like record and decrement
+      await ctx.db.delete(existingLike._id);
+      await ctx.db.patch(args.commentId, {
+        likeCount: Math.max(0, comment.likeCount - 1),
+      });
+      return { liked: false };
+    } else {
+      // Like: create a like record and increment
+      await ctx.db.insert("commentLikes", {
+        commentId: args.commentId,
+        accountId: account._id,
+        createdAt: Date.now(),
+      });
+      await ctx.db.patch(args.commentId, {
+        likeCount: comment.likeCount + 1,
+      });
+      return { liked: true };
+    }
   },
 });

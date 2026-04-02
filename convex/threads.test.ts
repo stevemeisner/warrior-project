@@ -668,7 +668,7 @@ describe("likeComment", () => {
     ).rejects.toThrow("Not authenticated");
   });
 
-  it("allows multiple likes (no deduplication)", async () => {
+  it("toggles like on/off (deduplication)", async () => {
     const t = convexTest(schema, modules);
     const { accountId, asUser } = await createAccount(t, { name: "Alice" });
     const { threadId } = await createThread(t, { authorId: accountId });
@@ -678,10 +678,16 @@ describe("likeComment", () => {
       likeCount: 0,
     });
 
-    await asUser.mutation(api.threads.likeComment, { commentId });
-    await asUser.mutation(api.threads.likeComment, { commentId });
+    // First like: increments to 1
+    const result1 = await asUser.mutation(api.threads.likeComment, { commentId });
+    expect(result1.liked).toBe(true);
+    let comment = await t.run(async (ctx) => ctx.db.get(commentId));
+    expect(comment!.likeCount).toBe(1);
 
-    const comment = await t.run(async (ctx) => ctx.db.get(commentId));
-    expect(comment!.likeCount).toBe(2);
+    // Second like from same user: toggles off, decrements to 0
+    const result2 = await asUser.mutation(api.threads.likeComment, { commentId });
+    expect(result2.liked).toBe(false);
+    comment = await t.run(async (ctx) => ctx.db.get(commentId));
+    expect(comment!.likeCount).toBe(0);
   });
 });

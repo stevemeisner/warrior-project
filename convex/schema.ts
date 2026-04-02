@@ -261,6 +261,16 @@ export default defineSchema({
     .index("by_active", ["isActive"])
     .index("by_warrior", ["warriorId"]),
 
+  // Comment likes - tracks who liked which comment (prevents duplicates)
+  commentLikes: defineTable({
+    commentId: v.id("comments"),
+    accountId: v.id("accounts"),
+    createdAt: v.number(),
+  })
+    .index("by_comment", ["commentId"])
+    .index("by_comment_and_account", ["commentId", "accountId"])
+    .index("by_account", ["accountId"]),
+
   // Blocked users - for privacy/moderation
   blockedUsers: defineTable({
     blockerId: v.id("accounts"),
