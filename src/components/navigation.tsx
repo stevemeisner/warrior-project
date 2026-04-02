@@ -35,6 +35,7 @@ const navItems = [
   { href: "/messages", label: "Messages", Icon: MessageCircle },
   { href: "/community", label: "Community", Icon: Users },
   { href: "/support", label: "Support", Icon: HeartHandshake },
+  { href: "/caregivers", label: "Caregivers", Icon: HeartHandshake },
 ];
 
 function AuthenticatedNav() {
