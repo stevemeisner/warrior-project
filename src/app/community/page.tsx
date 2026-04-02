@@ -471,20 +471,26 @@ function CommunityContent() {
                     Comments ({selectedThread.comments?.length || 0})
                   </h4>
 
-                  <form onSubmit={handleAddComment} className="flex gap-2 mb-4">
-                    <Input
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Add a comment..."
-                      disabled={isCommenting}
-                    />
-                    <Button
-                      type="submit"
-                      disabled={isCommenting || !newComment.trim()}
-                    >
-                      Post
-                    </Button>
-                  </form>
+                  {selectedThread.isLocked ? (
+                    <p className="text-sm text-muted-foreground mb-4 italic">
+                      This thread is locked and no longer accepting comments.
+                    </p>
+                  ) : (
+                    <form onSubmit={handleAddComment} className="flex gap-2 mb-4">
+                      <Input
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="Add a comment..."
+                        disabled={isCommenting}
+                      />
+                      <Button
+                        type="submit"
+                        disabled={isCommenting || !newComment.trim()}
+                      >
+                        Post
+                      </Button>
+                    </form>
+                  )}
 
                   <div className="space-y-3 max-h-[300px] overflow-y-auto">
                     {selectedThread.comments?.map((comment: any) => (

@@ -244,7 +244,7 @@ function MessagesContent() {
               </CardHeader>
               <CardContent className="flex-1 overflow-y-auto p-6 space-y-3 bg-muted/20">
                 {selectedConversation.messages?.map((message, index) => {
-                  const isSent = message.senderId === selectedConversation.participants?.[0]?._id;
+                  const isSent = message.senderId === (selectedConversation as any).currentAccountId;
                   const showAvatar =
                     index === 0 ||
                     selectedConversation.messages?.[index - 1]?.senderId !== message.senderId;

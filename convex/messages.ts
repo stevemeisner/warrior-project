@@ -213,6 +213,7 @@ export const getConversation = query({
     const oldestMessage = enrichedMessages[0];
     return {
       ...conversation,
+      currentAccountId: account._id,
       participants: participants.filter(Boolean),
       messages: enrichedMessages,
       oldestMessageTimestamp: oldestMessage?.createdAt,

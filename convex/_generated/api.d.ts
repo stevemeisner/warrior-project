@@ -12,6 +12,7 @@ import type * as accounts from "../accounts.js";
 import type * as auth from "../auth.js";
 import type * as blockedUsers from "../blockedUsers.js";
 import type * as caregivers from "../caregivers.js";
+import type * as crons from "../crons.js";
 import type * as email from "../email.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   blockedUsers: typeof blockedUsers;
   caregivers: typeof caregivers;
+  crons: typeof crons;
   email: typeof email;
   http: typeof http;
   messages: typeof messages;

@@ -20,6 +20,10 @@ export const setTyping = mutation({
 
     if (!account) throw new Error("Account not found");
 
+    // Verify the user is a participant in this conversation
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation || !conversation.participants.includes(account._id)) return;
+
     // Check if there's already a typing indicator for this user in this conversation
     const existing = await ctx.db
       .query("typingIndicators")

@@ -154,6 +154,29 @@ export const createAccount = mutation({
   },
 });
 
+// Mark onboarding as complete
+export const completeOnboarding = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const account = await ctx.db
+      .query("accounts")
+      .withIndex("by_authId", (q) => q.eq("authId", userId))
+      .first();
+
+    if (!account) throw new Error("Account not found");
+
+    await ctx.db.patch(account._id, {
+      onboardingComplete: true,
+      updatedAt: Date.now(),
+    });
+
+    return account._id;
+  },
+});
+
 // Update account profile
 export const updateAccount = mutation({
   args: {

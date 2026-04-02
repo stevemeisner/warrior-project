@@ -16,11 +16,16 @@ export function useTypingIndicator(conversationId: string | null) {
   );
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSentRef = useRef<number>(0);
 
   const handleTyping = useCallback(() => {
     if (!conversationId) return;
 
-    // Send typing indicator
+    // Throttle: only send setTyping at most once per second
+    const now = Date.now();
+    if (now - lastSentRef.current < 1000) return;
+    lastSentRef.current = now;
+
     setTyping({ conversationId: conversationId as Id<"conversations"> });
 
     // Clear the existing timeout

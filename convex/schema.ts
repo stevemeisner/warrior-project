@@ -189,7 +189,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_conversation", ["conversationId"])
-    .index("by_conversation_and_created", ["conversationId", "createdAt"]),
+    .index("by_conversation_and_created", ["conversationId", "createdAt"])
+    .index("by_sender_and_created", ["senderId", "createdAt"]),
 
   // Threads - community discussion posts
   threads: defineTable({

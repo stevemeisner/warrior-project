@@ -47,6 +47,7 @@ export default function OnboardingPage() {
   const createAccount = useMutation(api.accounts.createAccount);
   const createWarrior = useMutation(api.warriors.createWarrior);
   const updateAccount = useMutation(api.accounts.updateAccount);
+  const completeOnboarding = useMutation(api.accounts.completeOnboarding);
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -176,10 +177,11 @@ export default function OnboardingPage() {
     setError(null);
 
     try {
+      // Only save city/state text — real lat/lng must come from geocoding or manual map pin later
       await updateAccount({
         location: {
-          latitude: 0,
-          longitude: 0,
+          latitude: 39.8283, // Approximate US center as placeholder
+          longitude: -98.5795,
           city: city.trim() || undefined,
           state: state.trim() || undefined,
         },
@@ -192,7 +194,8 @@ export default function OnboardingPage() {
     }
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
+    await completeOnboarding();
     router.push("/dashboard");
   };
 

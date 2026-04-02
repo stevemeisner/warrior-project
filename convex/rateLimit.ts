@@ -33,11 +33,8 @@ export async function checkRateLimit(
     case "sendMessage": {
       const messages = await ctx.db
         .query("messages")
-        .filter((q) =>
-          q.and(
-            q.eq(q.field("senderId"), accountId),
-            q.gte(q.field("createdAt"), windowStart)
-          )
+        .withIndex("by_sender_and_created", (q) =>
+          q.eq("senderId", accountId).gte("createdAt", windowStart)
         )
         .take(config.maxActions + 1);
       count = messages.length;

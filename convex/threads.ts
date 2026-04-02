@@ -198,6 +198,13 @@ export const updateThread = mutation({
       throw new Error("Not authorized to update this thread");
     }
 
+    if (args.title !== undefined && args.title.length > 200) {
+      throw new Error("Title must be 200 characters or less");
+    }
+    if (args.content !== undefined && args.content.length > 10000) {
+      throw new Error("Content must be 10,000 characters or less");
+    }
+
     const updates: Record<string, unknown> = {
       updatedAt: Date.now(),
     };
@@ -379,6 +386,10 @@ export const updateComment = mutation({
 
     if (comment.authorId !== account._id) {
       throw new Error("Not authorized to update this comment");
+    }
+
+    if (args.content.length > 5000) {
+      throw new Error("Comment must be 5,000 characters or less");
     }
 
     await ctx.db.patch(args.commentId, {
