@@ -1,7 +1,59 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { QueryCtx } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 import { auth } from "./auth";
 import { statusValues, visibilitySettings } from "./schema";
+
+// Check if viewerAccountId is "connected" to familyAccountId.
+// Connected means: viewer is a caregiver for the family, OR they share a mutual caregiver.
+async function isConnected(
+  ctx: QueryCtx,
+  viewerAccountId: Id<"accounts">,
+  familyAccountId: Id<"accounts">
+): Promise<boolean> {
+  // Direct caregiver relationship
+  const directRelation = await ctx.db
+    .query("caregivers")
+    .withIndex("by_caregiver", (q) => q.eq("caregiverAccountId", viewerAccountId))
+    .filter((q) =>
+      q.and(
+        q.eq(q.field("accountId"), familyAccountId),
+        q.eq(q.field("inviteStatus"), "accepted")
+      )
+    )
+    .first();
+
+  if (directRelation) return true;
+
+  // Check if the viewer is a family that shares a caregiver with familyAccountId.
+  // Get caregivers of the warrior's family.
+  const familyCaregivers = await ctx.db
+    .query("caregivers")
+    .withIndex("by_account", (q) => q.eq("accountId", familyAccountId))
+    .filter((q) => q.eq(q.field("inviteStatus"), "accepted"))
+    .collect();
+
+  const sharedCaregiverIds = familyCaregivers.map((c) => c.caregiverAccountId);
+
+  // Check if any of these caregivers also care for the viewer's family
+  for (const cgId of sharedCaregiverIds) {
+    const sharedRelation = await ctx.db
+      .query("caregivers")
+      .withIndex("by_caregiver", (q) => q.eq("caregiverAccountId", cgId))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("accountId"), viewerAccountId),
+          q.eq(q.field("inviteStatus"), "accepted")
+        )
+      )
+      .first();
+
+    if (sharedRelation) return true;
+  }
+
+  return false;
+}
 
 // Get all warriors for the current account
 export const getMyWarriors = query({
@@ -59,12 +111,23 @@ export const getWarrior = query({
       }
     }
 
-    // For non-owners/non-caregivers, only return if public
+    // For non-owners/non-caregivers, check visibility
     if (warrior.visibility === "public") {
       return warrior;
     }
 
-    // Private or connections-only warriors not accessible to others
+    // "connections" visibility: visible to caregivers and families sharing a caregiver
+    if (warrior.visibility === "connections" && userId) {
+      const viewerAccount = await ctx.db
+        .query("accounts")
+        .withIndex("by_authId", (q) => q.eq("authId", userId))
+        .first();
+
+      if (viewerAccount && await isConnected(ctx, viewerAccount._id, warrior.accountId)) {
+        return warrior;
+      }
+    }
+
     return null;
   },
 });
@@ -102,10 +165,15 @@ export const getWarriorsByAccount = query({
         if (caregiverRelation && caregiverRelation.inviteStatus === "accepted") {
           return warriors;
         }
+
+        // For non-caregivers, check connections visibility
+        const connected = await isConnected(ctx, viewerAccount._id, args.accountId);
+        return warriors.filter(
+          (w) => w.visibility === "public" || (w.visibility === "connections" && connected)
+        );
       }
     }
 
-    // For others, only return public warriors
     return warriors.filter((w) => w.visibility === "public");
   },
 });
@@ -282,20 +350,50 @@ export const deleteWarrior = mutation({
   },
 });
 
-// Get public warriors with optional status filter (for map view)
+// Get visible warriors with optional status filter (for map view)
+// Returns public warriors + "connections" warriors for authenticated users
 export const getPublicWarriors = query({
   args: {
     status: v.optional(statusValues),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    // Limit query to prevent loading too many records
     const limit = args.limit || 100;
-    const warriors = await ctx.db
+    const userId = await auth.getUserId(ctx);
+
+    // Always include public warriors
+    const publicWarriors = await ctx.db
       .query("warriors")
       .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
-      .take(limit * 2); // Fetch extra for status filtering
+      .take(limit * 2);
 
+    // For authenticated users, also include "connections" warriors they can see
+    let connectionsWarriors: typeof publicWarriors = [];
+    if (userId) {
+      const viewerAccount = await ctx.db
+        .query("accounts")
+        .withIndex("by_authId", (q) => q.eq("authId", userId))
+        .first();
+
+      if (viewerAccount) {
+        const allConnectionsWarriors = await ctx.db
+          .query("warriors")
+          .withIndex("by_visibility", (q) => q.eq("visibility", "connections"))
+          .take(limit * 2);
+
+        // Filter to only those the viewer is connected to
+        const checkedConnections = await Promise.all(
+          allConnectionsWarriors.map(async (w) => {
+            if (w.accountId === viewerAccount._id) return w; // Own warriors
+            const connected = await isConnected(ctx, viewerAccount._id, w.accountId);
+            return connected ? w : null;
+          })
+        );
+        connectionsWarriors = checkedConnections.filter(Boolean) as typeof publicWarriors;
+      }
+    }
+
+    const warriors = [...publicWarriors, ...connectionsWarriors];
     let filtered = warriors;
     if (args.status) {
       filtered = warriors.filter((w) => w.currentStatus === args.status);
