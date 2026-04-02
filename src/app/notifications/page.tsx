@@ -10,14 +10,26 @@ import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { NotificationsSkeleton } from "@/components/skeleton-loaders";
+import {
+  Activity,
+  MessageCircle,
+  HeartHandshake,
+  Users,
+  MessageSquare,
+  AtSign,
+  Bell,
+  Check,
+  Trash2,
+} from "lucide-react";
+import { type LucideIcon } from "lucide-react";
 
-const notificationIcons: Record<string, string> = {
-  statusChange: "📊",
-  newMessage: "💬",
-  supportRequest: "💜",
-  caregiverInvite: "👥",
-  threadReply: "💭",
-  mention: "@",
+const notificationIcons: Record<string, { Icon: LucideIcon; color: string }> = {
+  statusChange: { Icon: Activity, color: "bg-blue-100 text-blue-600" },
+  newMessage: { Icon: MessageCircle, color: "bg-violet-100 text-violet-600" },
+  supportRequest: { Icon: HeartHandshake, color: "bg-rose-100 text-rose-600" },
+  caregiverInvite: { Icon: Users, color: "bg-green-100 text-green-600" },
+  threadReply: { Icon: MessageSquare, color: "bg-amber-100 text-amber-600" },
+  mention: { Icon: AtSign, color: "bg-purple-100 text-purple-600" },
 };
 
 function NotificationsContent() {
@@ -88,9 +100,15 @@ function NotificationsContent() {
                     !notification.isRead && "bg-primary/5"
                   )}
                 >
-                  <div className="text-2xl" aria-hidden="true">
-                    {notificationIcons[notification.type] || "🔔"}
-                  </div>
+                  {(() => {
+                    const iconInfo = notificationIcons[notification.type] || { Icon: Bell, color: "bg-muted text-muted-foreground" };
+                    const IconComp = iconInfo.Icon;
+                    return (
+                      <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shrink-0", iconInfo.color)}>
+                        <IconComp className="h-5 w-5" strokeWidth={1.75} />
+                      </div>
+                    );
+                  })()}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div>
@@ -128,6 +146,7 @@ function NotificationsContent() {
                             handleMarkAsRead(notification._id.toString());
                           }}
                         >
+                          <Check className="h-3.5 w-3.5 mr-1" />
                           Mark as read
                         </Button>
                       )}
@@ -140,6 +159,7 @@ function NotificationsContent() {
                           handleDelete(notification._id.toString());
                         }}
                       >
+                        <Trash2 className="h-3.5 w-3.5 mr-1" />
                         Delete
                       </Button>
                     </div>
@@ -149,8 +169,10 @@ function NotificationsContent() {
             </div>
           ) : (
             <div className="py-12 text-center text-muted-foreground">
-              <span className="text-4xl block mb-4" aria-hidden="true">🔔</span>
-              <p>No notifications yet</p>
+              <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-muted mb-4">
+                <Bell className="h-7 w-7" strokeWidth={1.75} />
+              </div>
+              <p className="font-medium text-foreground">No notifications yet</p>
               <p className="text-sm mt-1">
                 You&apos;ll see updates here when there&apos;s activity
               </p>

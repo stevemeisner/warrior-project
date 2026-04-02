@@ -30,15 +30,16 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { CommunitySkeleton } from "@/components/skeleton-loaders";
+import { MessageSquare, Plus, Sparkles, MessageCircle, Eye } from "lucide-react";
 
 type Category = "general" | "support" | "resources" | "celebrations" | "questions";
 
-const categoryLabels: Record<Category, { label: string; color: string }> = {
-  general: { label: "General", color: "bg-gray-500" },
-  support: { label: "Support", color: "bg-purple-500" },
-  resources: { label: "Resources", color: "bg-blue-500" },
-  celebrations: { label: "Celebrations", color: "bg-green-500" },
-  questions: { label: "Questions", color: "bg-amber-500" },
+const categoryLabels: Record<Category, { label: string; bg: string; text: string; border: string }> = {
+  general: { label: "General", bg: "bg-gray-100", text: "text-gray-700", border: "border-l-gray-400" },
+  support: { label: "Support", bg: "bg-purple-100", text: "text-purple-700", border: "border-l-purple-400" },
+  resources: { label: "Resources", bg: "bg-blue-100", text: "text-blue-700", border: "border-l-blue-400" },
+  celebrations: { label: "Celebrations", bg: "bg-green-100", text: "text-green-700", border: "border-l-green-400" },
+  questions: { label: "Questions", bg: "bg-amber-100", text: "text-amber-700", border: "border-l-amber-400" },
 };
 
 function CommunityContent() {
@@ -112,10 +113,13 @@ function CommunityContent() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Community</h1>
+        <div className="flex items-center gap-2">
+          <MessageSquare className="h-7 w-7 text-primary" />
+          <h1 className="text-3xl font-bold">Community</h1>
+        </div>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
-            <Button>New Discussion</Button>
+            <Button className="rounded-full gap-1.5"><Plus className="h-4 w-4" />New Discussion</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
@@ -181,22 +185,30 @@ function CommunityContent() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-6">
-        <Button
-          variant={selectedCategory === "all" ? "default" : "outline"}
-          size="sm"
+        <button
+          className={cn(
+            "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+            selectedCategory === "all"
+              ? "bg-gray-800 text-white"
+              : "bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200"
+          )}
           onClick={() => setSelectedCategory("all")}
         >
           All
-        </Button>
-        {Object.entries(categoryLabels).map(([key, { label }]) => (
-          <Button
+        </button>
+        {(Object.entries(categoryLabels) as [Category, typeof categoryLabels[Category]][]).map(([key, { label, bg, text }]) => (
+          <button
             key={key}
-            variant={selectedCategory === key ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedCategory(key as Category)}
+            className={cn(
+              "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+              selectedCategory === key
+                ? cn(bg, text)
+                : "bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200"
+            )}
+            onClick={() => setSelectedCategory(key)}
           >
             {label}
-          </Button>
+          </button>
         ))}
         <div className="ml-auto">
           <Select
@@ -233,26 +245,32 @@ function CommunityContent() {
               <span className="sr-only">Loading discussions</span>
             </div>
           ) : threads.length > 0 ? (
-            threads.map((thread) => (
+            threads.map((thread) => {
+              const cat = categoryLabels[thread.category as Category];
+              return (
               <Card
                 key={thread._id}
                 className={cn(
-                  "cursor-pointer hover:shadow-md transition-shadow",
-                  selectedThreadId === thread._id.toString() && "ring-2 ring-primary"
+                  "cursor-pointer card-hover border-l-4 rounded-xl",
+                  cat?.border,
+                  selectedThreadId === thread._id.toString()
+                    ? "ring-2 ring-primary shadow-md"
+                    : "hover:shadow-md"
                 )}
                 onClick={() => setSelectedThreadId(thread._id.toString())}
               >
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      {thread.isPinned && <Badge variant="secondary">Pinned</Badge>}
+                      {thread.isPinned && <Badge variant="secondary" className="rounded-full">Pinned</Badge>}
                       <Badge
                         className={cn(
-                          "text-white",
-                          categoryLabels[thread.category as Category]?.color
+                          "rounded-full font-medium",
+                          cat?.bg,
+                          cat?.text
                         )}
                       >
-                        {categoryLabels[thread.category as Category]?.label}
+                        {cat?.label}
                       </Badge>
                     </div>
                     <span className="text-xs text-muted-foreground">
@@ -275,28 +293,38 @@ function CommunityContent() {
                       </Avatar>
                       {thread.authorName}
                     </span>
-                    <span>{thread.commentCount} comments</span>
-                    <span>{thread.viewCount} views</span>
+                    <span className="flex items-center gap-1">
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      {thread.commentCount}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Eye className="h-3.5 w-3.5" />
+                      {thread.viewCount}
+                    </span>
                   </div>
                 </CardContent>
               </Card>
-            ))
+              );
+            })
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              No discussions yet. Start the first one!
+            <div className="text-center py-16 text-muted-foreground">
+              <MessageSquare className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
+              <p className="text-lg font-medium mb-1">No discussions yet</p>
+              <p className="text-sm">Start the first conversation and bring the community together!</p>
             </div>
           )}
         </div>
 
         {/* Thread Detail */}
-        <Card className="h-fit sticky top-20">
+        <Card className="h-fit sticky top-20 rounded-xl">
           {selectedThread ? (
             <>
               <CardHeader>
                 <Badge
                   className={cn(
-                    "w-fit text-white",
-                    categoryLabels[selectedThread.category as Category]?.color
+                    "w-fit rounded-full font-medium",
+                    categoryLabels[selectedThread.category as Category]?.bg,
+                    categoryLabels[selectedThread.category as Category]?.text
                   )}
                 >
                   {categoryLabels[selectedThread.category as Category]?.label}
@@ -342,7 +370,7 @@ function CommunityContent() {
                     {selectedThread.comments?.map((comment: any) => (
                       <div
                         key={comment._id}
-                        className="p-3 rounded-lg bg-muted/50"
+                        className="p-3 rounded-xl bg-amber-50/50 border border-amber-100/50"
                       >
                         <div className="flex items-center gap-2 mb-1">
                           <Avatar className="h-5 w-5">
@@ -363,9 +391,12 @@ function CommunityContent() {
                     ))}
                     {(!selectedThread.comments ||
                       selectedThread.comments.length === 0) && (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        No comments yet. Be the first to share your thoughts!
-                      </p>
+                      <div className="text-center py-6">
+                        <Sparkles className="h-8 w-8 mx-auto mb-2 text-amber-300" />
+                        <p className="text-sm text-muted-foreground">
+                          No comments yet. Be the first to share your thoughts!
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -373,7 +404,9 @@ function CommunityContent() {
             </>
           ) : (
             <CardContent className="py-20 text-center text-muted-foreground">
-              Select a discussion to view details
+              <MessageSquare className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
+              <p className="font-medium">Select a discussion</p>
+              <p className="text-sm mt-1">Choose a thread from the left to view details and join the conversation.</p>
             </CardContent>
           )}
         </Card>

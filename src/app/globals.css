@@ -32,7 +32,7 @@
   --popover-foreground: oklch(0.15 0 0);
   --input: oklch(0.92 0.005 90);
   --ring: oklch(0.55 0.12 220);
-  --radius: 0.625rem;
+  --radius: 0.875rem;
 
   --destructive: oklch(0.55 0.2 25);
   --destructive-foreground: oklch(0.98 0 0);
@@ -143,5 +143,18 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  /* Friendly card hover lift */
+  .card-hover {
+    @apply transition-all duration-200 ease-out;
+  }
+  .card-hover:hover {
+    @apply -translate-y-0.5 shadow-md;
   }
 }

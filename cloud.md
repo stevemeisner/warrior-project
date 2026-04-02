@@ -862,3 +862,372 @@ await ctx.runMutation(internal.notifications.createNotification, {
 5. **Internal functions** - Use `internalMutation`/`internalAction` for functions called only from other Convex functions
 
 6. **Scheduler for async work** - Use `ctx.scheduler.runAfter()` for email sending, etc.
+
+7. **Optional cursor parameters in filters** - When using optional cursor parameters with `.filter()`, check for undefined explicitly:
+
+```typescript
+// BAD: TypeScript error - args.cursor is optional
+.filter((q) => q.lt(q.field("lastMessageAt"), args.cursor))
+
+// GOOD: Assign to variable and check for undefined
+const cursor = args.cursor;
+if (cursor !== undefined) {
+  query = query.filter((q) => q.lt(q.field("lastMessageAt"), cursor));
+}
+```
+
+8. **Pagination return types** - When adding pagination to existing queries, update both the return structure AND the frontend to handle the new format:
+
+```typescript
+// Backend returns object with pagination info
+return {
+  conversations: enrichedConversations,
+  nextCursor: lastConv?.lastMessageAt,
+  hasMore: myConversations.length === limit,
+};
+
+// Frontend must destructure
+const conversationsData = useQuery(api.messages.getMyConversations, {});
+const conversations = conversationsData?.conversations; // Not conversationsData directly!
+```
+
+---
+
+## Security Patterns
+
+### Query Authorization
+
+All queries that return user data should verify authorization. Never expose raw data without checking:
+
+```typescript
+// GOOD: Returns public fields only for other users' accounts
+export const getAccount = query({
+  args: { accountId: v.id("accounts") },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    const account = await ctx.db.get(args.accountId);
+    if (!account) return null;
+
+    // If viewing own account, return all fields
+    if (userId) {
+      const viewerAccount = await ctx.db
+        .query("accounts")
+        .withIndex("by_authId", (q) => q.eq("authId", userId))
+        .first();
+      if (viewerAccount?._id === account._id) {
+        return account;
+      }
+    }
+
+    // For other users, return only public profile fields
+    return {
+      _id: account._id,
+      name: account.name,
+      role: account.role,
+      profilePhoto: account.profilePhoto,
+      location: account.privacySettings?.showLocation ? account.location : undefined,
+      createdAt: account.createdAt,
+    };
+  },
+});
+```
+
+### Visibility Check Pattern
+
+For resources with visibility settings, always check before returning:
+
+```typescript
+export const getWarrior = query({
+  args: { warriorId: v.id("warriors") },
+  handler: async (ctx, args) => {
+    const warrior = await ctx.db.get(args.warriorId);
+    if (!warrior) return null;
+
+    const userId = await auth.getUserId(ctx);
+    if (userId) {
+      const account = await ctx.db
+        .query("accounts")
+        .withIndex("by_authId", (q) => q.eq("authId", userId))
+        .first();
+
+      if (account) {
+        // Owner always has access
+        if (warrior.accountId === account._id) return warrior;
+
+        // Check caregiver relationship
+        const caregiverRelation = await ctx.db
+          .query("caregivers")
+          .withIndex("by_caregiver", (q) => q.eq("caregiverAccountId", account._id))
+          .filter((q) => q.eq(q.field("accountId"), warrior.accountId))
+          .first();
+
+        if (caregiverRelation?.inviteStatus === "accepted") {
+          return warrior;
+        }
+
+        // Allow public warriors
+        if (warrior.visibility === "public") return warrior;
+      }
+    }
+
+    // Unauthenticated users only see public warriors
+    if (warrior.visibility === "public") return warrior;
+    return null;
+  },
+});
+```
+
+### Authenticated View Counter
+
+Require authentication for increment operations to prevent abuse:
+
+```typescript
+export const incrementViewCount = mutation({
+  args: { threadId: v.id("threads") },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      // Silently ignore unauthenticated view count increments
+      return null;
+    }
+    // ... increment logic
+  },
+});
+```
+
+---
+
+## Pagination Patterns
+
+### Cursor-Based Pagination (Conversations)
+
+For time-ordered lists, use timestamp cursors:
+
+```typescript
+export const getMyConversations = query({
+  args: {
+    cursor: v.optional(v.number()), // lastMessageAt timestamp to paginate from
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 50;
+    const cursor = args.cursor;
+
+    let allConversations;
+    if (cursor !== undefined) {
+      allConversations = await ctx.db
+        .query("conversations")
+        .withIndex("by_last_message")
+        .order("desc")
+        .filter((q) => q.lt(q.field("lastMessageAt"), cursor))
+        .take(limit * 3); // Over-fetch to account for filtering
+    } else {
+      allConversations = await ctx.db
+        .query("conversations")
+        .withIndex("by_last_message")
+        .order("desc")
+        .take(limit * 3);
+    }
+
+    // Filter for user's conversations
+    const myConversations = allConversations
+      .filter((conv) => conv.participants.includes(account._id))
+      .slice(0, limit);
+
+    // ... enrich data ...
+
+    const lastConv = myConversations[myConversations.length - 1];
+    return {
+      conversations: enrichedConversations,
+      nextCursor: lastConv?.lastMessageAt ?? lastConv?.createdAt,
+      hasMore: myConversations.length === limit,
+    };
+  },
+});
+```
+
+### Loading Older Messages
+
+For chat-style interfaces, load older messages by timestamp:
+
+```typescript
+export const getConversation = query({
+  args: {
+    conversationId: v.id("conversations"),
+    limit: v.optional(v.number()),
+    beforeTimestamp: v.optional(v.number()), // Load messages before this timestamp
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 100;
+    const beforeTimestamp = args.beforeTimestamp;
+
+    let messages;
+    if (beforeTimestamp !== undefined) {
+      messages = await ctx.db
+        .query("messages")
+        .withIndex("by_conversation_and_created", (q) =>
+          q.eq("conversationId", args.conversationId)
+        )
+        .filter((q) => q.lt(q.field("createdAt"), beforeTimestamp))
+        .order("desc")
+        .take(limit);
+    } else {
+      messages = await ctx.db
+        .query("messages")
+        .withIndex("by_conversation_and_created", (q) =>
+          q.eq("conversationId", args.conversationId)
+        )
+        .order("desc")
+        .take(limit);
+    }
+
+    // Reverse for chronological display
+    messages.reverse();
+
+    return {
+      ...conversation,
+      messages: enrichedMessages,
+      oldestMessageTimestamp: enrichedMessages[0]?.createdAt,
+      hasMoreMessages: messages.length === limit,
+    };
+  },
+});
+```
+
+### Comment Pagination with hasMore flag
+
+```typescript
+export const getThread = query({
+  args: {
+    threadId: v.id("threads"),
+    commentLimit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.commentLimit || 200;
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("by_thread_and_created", (q) => q.eq("threadId", args.threadId))
+      .order("asc")
+      .take(limit + 1); // Fetch one extra to check for more
+
+    const hasMoreComments = comments.length > limit;
+    const displayComments = hasMoreComments ? comments.slice(0, limit) : comments;
+
+    return {
+      ...thread,
+      comments: nestedComments,
+      hasMoreComments,
+      totalCommentCount: thread.commentCount,
+    };
+  },
+});
+```
+
+---
+
+## URL Parameter Handling
+
+### Messages ?to Parameter
+
+Handle deep links to start/open conversations with specific users:
+
+```typescript
+// src/app/messages/page.tsx
+function MessagesContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const toAccountId = searchParams.get("to");
+  const hasHandledToParam = useRef(false);
+
+  const conversationsData = useQuery(api.messages.getMyConversations, {});
+  const conversations = conversationsData?.conversations;
+  const startConversation = useMutation(api.messages.startConversation);
+  const markAsRead = useMutation(api.messages.markAsRead);
+
+  useEffect(() => {
+    async function handleToParameter() {
+      if (!toAccountId || !conversations || hasHandledToParam.current) return;
+      hasHandledToParam.current = true;
+
+      // Find existing conversation with this user
+      const existingConversation = conversations.find((conv) =>
+        conv.participants?.some((p) => p?._id?.toString() === toAccountId)
+      );
+
+      if (existingConversation) {
+        setSelectedConversationId(existingConversation._id.toString());
+        await markAsRead({ conversationId: existingConversation._id as any });
+      } else {
+        // Create new conversation with this user
+        try {
+          const newConversationId = await startConversation({
+            participantIds: [toAccountId as any],
+          });
+          setSelectedConversationId(newConversationId.toString());
+        } catch (error) {
+          console.error("Failed to start conversation:", error);
+        }
+      }
+
+      // Clear the ?to param from URL to prevent re-processing
+      router.replace("/messages");
+    }
+
+    handleToParameter();
+  }, [toAccountId, conversations, markAsRead, startConversation, router]);
+}
+```
+
+### Notification Click Navigation
+
+Navigate to relevant pages based on notification type:
+
+```typescript
+const handleNotificationClick = async (notification) => {
+  if (!notification.isRead) {
+    await markAsRead({ notificationId: notification._id as any });
+  }
+
+  // Navigate based on notification type and related entities
+  if (notification.type === "newMessage" && notification.relatedConversationId) {
+    router.push("/messages");
+  } else if (notification.type === "threadReply" && notification.relatedThreadId) {
+    router.push(`/community?thread=${notification.relatedThreadId}`);
+  } else if (notification.type === "statusChange" && notification.relatedWarriorId) {
+    router.push(`/profile/warrior/${notification.relatedWarriorId}`);
+  } else if (notification.type === "caregiverInvite") {
+    router.push("/settings");
+  } else if (notification.type === "supportRequest" && notification.relatedAccountId) {
+    router.push(`/profile/${notification.relatedAccountId}`);
+  }
+};
+```
+
+---
+
+## Page Reference
+
+### Core Pages
+
+| Path | Description |
+|------|-------------|
+| `/dashboard` | Main dashboard with warriors and stats |
+| `/profile` | User profile and settings |
+| `/profile/warrior/[id]` | Individual warrior detail page |
+| `/profile/caregivers` | Caregiver management (family) / Invitations (caregiver) |
+| `/profile/[accountId]` | Public profile view |
+| `/messages` | Messaging conversations |
+| `/messages?to=[accountId]` | Open/create conversation with user |
+| `/community` | Discussion threads |
+| `/community?thread=[threadId]` | Open specific thread |
+| `/map` | Warrior map view |
+| `/notifications` | Notification center |
+| `/settings` | User settings |
+
+### Auth Pages
+
+| Path | Description |
+|------|-------------|
+| `/signin` | Sign in page |
+| `/signup` | Sign up page |
+| `/onboarding` | Post-OAuth account setup |

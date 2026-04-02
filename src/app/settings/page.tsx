@@ -17,6 +17,7 @@ import {
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { Settings, ShieldCheck, Bell, User } from "lucide-react";
 
 function SettingsContent() {
   const account = useQuery(api.accounts.getCurrentAccount);
