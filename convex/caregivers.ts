@@ -27,7 +27,16 @@ export const getMyCaregivers = query({
     // Get caregiver account details
     const caregiversWithDetails = await Promise.all(
       caregivers.map(async (caregiver) => {
-        const caregiverAccount = await ctx.db.get(caregiver.caregiverAccountId);
+        // For pending invites where invitee has no account, caregiverAccountId
+        // is a placeholder (family's own ID). Show invite email instead.
+        const isPendingPlaceholder =
+          caregiver.inviteStatus === "pending" &&
+          caregiver.caregiverAccountId === account._id;
+
+        const caregiverAccount = isPendingPlaceholder
+          ? null
+          : await ctx.db.get(caregiver.caregiverAccountId);
+
         return {
           ...caregiver,
           caregiverAccount: caregiverAccount
@@ -178,9 +187,13 @@ export const inviteCaregiver = mutation({
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .first();
 
+    // When the invitee doesn't have an account yet, we use the family's own ID
+    // as a placeholder. acceptInvite() patches this to the real caregiver account ID.
+    // All access-control queries filter by inviteStatus === "accepted", so the
+    // placeholder never grants unintended access.
     const caregiverId = await ctx.db.insert("caregivers", {
       accountId: account._id,
-      caregiverAccountId: caregiverAccount?._id || account._id, // Placeholder if no account yet
+      caregiverAccountId: caregiverAccount?._id || account._id,
       permissions: args.permissions,
       inviteStatus: "pending",
       inviteEmail: args.email,
