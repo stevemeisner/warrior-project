@@ -10,12 +10,14 @@
 
 import type * as accounts from "../accounts.js";
 import type * as auth from "../auth.js";
+import type * as blockedUsers from "../blockedUsers.js";
 import type * as caregivers from "../caregivers.js";
 import type * as email from "../email.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
 import type * as status from "../status.js";
+import type * as supportRequests from "../supportRequests.js";
 import type * as threads from "../threads.js";
 import type * as warriors from "../warriors.js";
 
@@ -28,12 +30,14 @@ import type {
 declare const fullApi: ApiFromModules<{
   accounts: typeof accounts;
   auth: typeof auth;
+  blockedUsers: typeof blockedUsers;
   caregivers: typeof caregivers;
   email: typeof email;
   http: typeof http;
   messages: typeof messages;
   notifications: typeof notifications;
   status: typeof status;
+  supportRequests: typeof supportRequests;
   threads: typeof threads;
   warriors: typeof warriors;
 }>;
