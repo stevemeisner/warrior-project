@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -17,14 +18,68 @@ import {
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Settings, ShieldCheck, Bell, User } from "lucide-react";
+import { Settings, ShieldCheck, Bell, User, Ban } from "lucide-react";
 
 function SettingsContent() {
   const account = useQuery(api.accounts.getCurrentAccount);
+  const blockedUsers = useQuery(api.blockedUsers.getBlockedUsers);
+  const updateAccount = useMutation(api.accounts.updateAccount);
   const updatePrivacy = useMutation(api.accounts.updatePrivacySettings);
   const updateNotifications = useMutation(api.accounts.updateNotificationPreferences);
+  const unblockUser = useMutation(api.blockedUsers.unblockUser);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [profileName, setProfileName] = useState("");
+  const [profileCity, setProfileCity] = useState("");
+  const [profileState, setProfileState] = useState("");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [unblockingId, setUnblockingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (account) {
+      setProfileName(account.name || "");
+      setProfileCity(account.location?.city || "");
+      setProfileState(account.location?.state || "");
+    }
+  }, [account]);
+
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    try {
+      const updates: Parameters<typeof updateAccount>[0] = {};
+      if (profileName !== (account?.name || "")) {
+        updates.name = profileName;
+      }
+      const currentCity = account?.location?.city || "";
+      const currentState = account?.location?.state || "";
+      if (profileCity !== currentCity || profileState !== currentState) {
+        updates.location = {
+          latitude: account?.location?.latitude || 0,
+          longitude: account?.location?.longitude || 0,
+          city: profileCity || undefined,
+          state: profileState || undefined,
+        };
+      }
+      await updateAccount(updates);
+      toast.success("Profile updated");
+    } catch (error) {
+      toast.error("Failed to update profile");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleUnblock = async (accountId: string) => {
+    setUnblockingId(accountId);
+    try {
+      await unblockUser({ accountId: accountId as any });
+      toast.success("User unblocked");
+    } catch (error) {
+      toast.error("Failed to unblock user");
+    } finally {
+      setUnblockingId(null);
+    }
+  };
 
   const handlePrivacyChange = async (
     key: "showLocation" | "showEmail" | "defaultVisibility",
@@ -99,12 +154,70 @@ function SettingsContent() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <h1 className="text-3xl font-bold mb-8">Settings</h1>
+      <div className="flex items-center gap-3 mb-8">
+        <div className="p-2 rounded-xl bg-primary/10">
+          <Settings className="h-6 w-6 text-primary" />
+        </div>
+        <h1 className="text-3xl font-bold">Settings</h1>
+      </div>
+
+      {/* Profile Editing */}
+      <Card className="mb-6 rounded-xl">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <User className="h-5 w-5 text-primary" />
+            <CardTitle>Profile</CardTitle>
+          </div>
+          <CardDescription>
+            Update your display name and location
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="profileName">Name</Label>
+            <Input
+              id="profileName"
+              value={profileName}
+              onChange={(e) => setProfileName(e.target.value)}
+              placeholder="Your name"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="profileCity">City</Label>
+              <Input
+                id="profileCity"
+                value={profileCity}
+                onChange={(e) => setProfileCity(e.target.value)}
+                placeholder="City"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="profileState">State</Label>
+              <Input
+                id="profileState"
+                value={profileState}
+                onChange={(e) => setProfileState(e.target.value)}
+                placeholder="State"
+              />
+            </div>
+          </div>
+          <Button
+            onClick={handleSaveProfile}
+            disabled={isSavingProfile}
+          >
+            {isSavingProfile ? "Saving..." : "Save Profile"}
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Privacy Settings */}
-      <Card className="mb-6">
+      <Card className="mb-6 rounded-xl">
         <CardHeader>
-          <CardTitle>Privacy</CardTitle>
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-primary" />
+            <CardTitle>Privacy</CardTitle>
+          </div>
           <CardDescription>
             Control what information others can see about you
           </CardDescription>
@@ -180,9 +293,12 @@ function SettingsContent() {
       </Card>
 
       {/* Notification Settings */}
-      <Card className="mb-6">
+      <Card className="mb-6 rounded-xl">
         <CardHeader>
-          <CardTitle>Notifications</CardTitle>
+          <div className="flex items-center gap-2">
+            <Bell className="h-5 w-5 text-primary" />
+            <CardTitle>Notifications</CardTitle>
+          </div>
           <CardDescription>
             Choose how you want to be notified
           </CardDescription>
@@ -269,9 +385,12 @@ function SettingsContent() {
       </Card>
 
       {/* Account Info */}
-      <Card>
+      <Card className="mb-6 rounded-xl">
         <CardHeader>
-          <CardTitle>Account</CardTitle>
+          <div className="flex items-center gap-2">
+            <User className="h-5 w-5 text-primary" />
+            <CardTitle>Account</CardTitle>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
@@ -286,6 +405,62 @@ function SettingsContent() {
             <Label className="text-muted-foreground">Member Since</Label>
             <p>{new Date(account.createdAt).toLocaleDateString()}</p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Blocked Users */}
+      <Card className="rounded-xl">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Ban className="h-5 w-5 text-primary" />
+            <CardTitle>Blocked Users</CardTitle>
+          </div>
+          <CardDescription>
+            Manage users you have blocked
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!blockedUsers || blockedUsers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">You haven&apos;t blocked anyone</p>
+          ) : (
+            <div className="space-y-3">
+              {blockedUsers.map((block) =>
+                block.blockedAccount ? (
+                  <div
+                    key={block._id}
+                    className="flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      {block.blockedAccount.profilePhoto ? (
+                        <img
+                          src={block.blockedAccount.profilePhoto}
+                          alt={block.blockedAccount.name}
+                          className="h-8 w-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                      <span className="text-sm font-medium">
+                        {block.blockedAccount.name}
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleUnblock(block.blockedAccount!._id)}
+                      disabled={unblockingId === block.blockedAccount._id}
+                    >
+                      {unblockingId === block.blockedAccount._id
+                        ? "Unblocking..."
+                        : "Unblock"}
+                    </Button>
+                  </div>
+                ) : null
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
