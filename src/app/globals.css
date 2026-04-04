@@ -1,65 +1,67 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
-
 :root {
-  /* Warrior Project Color Palette - Warm, hopeful colors */
-  --primary: oklch(0.55 0.12 220);        /* Soft blue #4a90a4 */
+  /* Sunlit Horizon Color Palette */
+  --primary: oklch(0.48 0.1 170);            /* Warm teal #1a7a6a */
   --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.65 0.1 145);       /* Gentle green #7cb086 */
+  --secondary: oklch(0.62 0.12 155);         /* Rich green #3aab7a */
   --secondary-foreground: oklch(0.98 0 0);
-  --accent: oklch(0.75 0.13 75);          /* Warm amber #e5a85f */
+  --accent: oklch(0.65 0.14 70);             /* Golden amber #c48a2a */
   --accent-foreground: oklch(0.15 0 0);
 
-  /* Status colors - used for warrior status indicators */
-  --status-thriving: oklch(0.65 0.1 145);     /* Green */
-  --status-stable: oklch(0.55 0.12 220);      /* Blue */
-  --status-struggling: oklch(0.75 0.13 75);   /* Amber */
-  --status-hospitalized: oklch(0.65 0.15 30); /* Coral */
-  --status-needs-support: oklch(0.6 0.12 300);/* Purple */
-  --status-feather: oklch(0.7 0 0);           /* Soft gray */
+  /* Status colors */
+  --status-thriving: oklch(0.62 0.12 155);   /* Green */
+  --status-stable: oklch(0.55 0.12 220);     /* Blue */
+  --status-struggling: oklch(0.65 0.14 70);  /* Amber */
+  --status-hospitalized: oklch(0.6 0.15 30); /* Coral */
+  --status-needs-support: oklch(0.55 0.12 300); /* Purple */
+  --status-feather: oklch(0.7 0 0);          /* Soft gray */
 
   /* UI colors */
-  --background: oklch(0.995 0.005 90);    /* Warm white #fefdfb */
+  --background: oklch(0.97 0.008 80);        /* Warm cream #faf7f2 */
   --foreground: oklch(0.15 0 0);
-  --muted: oklch(0.96 0.005 90);
-  --muted-foreground: oklch(0.45 0 0);
-  --border: oklch(0.9 0.005 90);
+  --muted: oklch(0.94 0.008 80);
+  --muted-foreground: oklch(0.48 0 0);       /* #777 for AA contrast on cream */
+  --border: oklch(0.88 0.02 70);             /* Warm border with amber tint */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.15 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.15 0 0);
-  --input: oklch(0.92 0.005 90);
-  --ring: oklch(0.55 0.12 220);
-  --radius: 0.875rem;
+  --input: oklch(0.90 0.008 80);
+  --ring: oklch(0.48 0.1 170);               /* Matches primary teal */
+  --radius: 1rem;                            /* 16px base, up from 14px */
 
   --destructive: oklch(0.55 0.2 25);
   --destructive-foreground: oklch(0.98 0 0);
 
   /* Chart colors */
-  --chart-1: oklch(0.55 0.12 220);
-  --chart-2: oklch(0.65 0.1 145);
-  --chart-3: oklch(0.75 0.13 75);
-  --chart-4: oklch(0.65 0.15 30);
-  --chart-5: oklch(0.6 0.12 300);
+  --chart-1: oklch(0.48 0.1 170);
+  --chart-2: oklch(0.62 0.12 155);
+  --chart-3: oklch(0.65 0.14 70);
+  --chart-4: oklch(0.6 0.15 30);
+  --chart-5: oklch(0.55 0.12 300);
 
-  /* Sidebar */
-  --sidebar: oklch(0.98 0.005 90);
+  /* Sidebar — matches main theme */
+  --sidebar: oklch(0.97 0.008 80);
   --sidebar-foreground: oklch(0.15 0 0);
-  --sidebar-primary: oklch(0.55 0.12 220);
+  --sidebar-primary: oklch(0.48 0.1 170);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.96 0.005 90);
+  --sidebar-accent: oklch(0.94 0.008 80);
   --sidebar-accent-foreground: oklch(0.15 0 0);
-  --sidebar-border: oklch(0.9 0.005 90);
-  --sidebar-ring: oklch(0.55 0.12 220);
+  --sidebar-border: oklch(0.88 0.02 70);
+  --sidebar-ring: oklch(0.48 0.1 170);
+
+  /* Gradient header */
+  --header-from: oklch(0.48 0.1 170);        /* Teal */
+  --header-to: oklch(0.65 0.14 70);          /* Golden amber */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-source-sans);
+  --font-heading: var(--font-comfortaa);
 
   /* Status colors for Tailwind classes */
   --color-status-thriving: var(--status-thriving);
@@ -105,35 +107,10 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
-}
 
-.dark {
-  --background: oklch(0.15 0 0);
-  --foreground: oklch(0.98 0 0);
-  --card: oklch(0.2 0 0);
-  --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.2 0 0);
-  --popover-foreground: oklch(0.98 0 0);
-  --primary: oklch(0.65 0.12 220);
-  --primary-foreground: oklch(0.15 0 0);
-  --secondary: oklch(0.25 0.02 145);
-  --secondary-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.25 0 0);
-  --muted-foreground: oklch(0.7 0 0);
-  --accent: oklch(0.25 0.02 75);
-  --accent-foreground: oklch(0.98 0 0);
-  --destructive: oklch(0.6 0.2 25);
-  --border: oklch(0.3 0 0);
-  --input: oklch(0.25 0 0);
-  --ring: oklch(0.65 0.12 220);
-  --sidebar: oklch(0.18 0 0);
-  --sidebar-foreground: oklch(0.98 0 0);
-  --sidebar-primary: oklch(0.65 0.12 220);
-  --sidebar-primary-foreground: oklch(0.15 0 0);
-  --sidebar-accent: oklch(0.25 0 0);
-  --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(0.3 0 0);
-  --sidebar-ring: oklch(0.65 0.12 220);
+  /* Header gradient colors for Tailwind */
+  --color-header-from: var(--header-from);
+  --color-header-to: var(--header-to);
 }
 
 @layer base {
@@ -147,14 +124,30 @@
   html {
     scroll-behavior: smooth;
   }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading), var(--font-sans), Arial, Helvetica, sans-serif;
+  }
 }
 
 @layer components {
-  /* Friendly card hover lift */
   .card-hover {
     @apply transition-all duration-200 ease-out;
   }
   .card-hover:hover {
     @apply -translate-y-0.5 shadow-md;
+  }
+  /* Gradient header utility */
+  .gradient-header {
+    background: linear-gradient(135deg, var(--header-from) 0%, var(--header-to) 100%);
+  }
+  /* Section label style */
+  .section-label {
+    font-family: var(--font-heading), var(--font-sans), Arial, Helvetica, sans-serif;
+    @apply text-xs font-semibold uppercase tracking-wide text-accent;
+  }
+  /* Emoji/icon container for timeline items */
+  .icon-box {
+    @apply w-10 h-10 rounded-xl flex items-center justify-center shrink-0;
+    background: linear-gradient(135deg, oklch(0.48 0.1 170 / 0.06), oklch(0.65 0.14 70 / 0.1));
   }
 }
