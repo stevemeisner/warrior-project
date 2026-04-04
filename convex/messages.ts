@@ -25,28 +25,31 @@ export const getMyConversations = query({
 
     if (!account) return emptyResult;
 
-    // Get conversations where user is a participant (with cursor-based pagination)
-    // Note: This filters in memory since Convex doesn't support array membership queries well
+    // Use junction table for O(1) membership lookup, then fetch conversations
     const limit = args.limit || 50;
-    const cursor = args.cursor;
 
-    // Fetch conversations, filtering by cursor if provided
-    let allConversations;
-    if (cursor !== undefined) {
-      allConversations = await ctx.db.query("conversations")
-        .withIndex("by_last_message")
-        .order("desc")
-        .filter((q) => q.lt(q.field("lastMessageAt"), cursor))
-        .take(limit * 3);
-    } else {
-      allConversations = await ctx.db.query("conversations")
-        .withIndex("by_last_message")
-        .order("desc")
-        .take(limit * 3);
-    }
-    const myConversations = allConversations
-      .filter((conv) => conv.participants.includes(account._id))
-      .slice(0, limit);
+    // Get all conversation IDs this user belongs to
+    const memberships = await ctx.db
+      .query("conversationParticipants")
+      .withIndex("by_account", (q) => q.eq("accountId", account._id))
+      .collect();
+
+    // Fetch conversations and sort by lastMessageAt
+    const conversations = await Promise.all(
+      memberships.map((m) => ctx.db.get(m.conversationId))
+    );
+
+    const validConversations = conversations
+      .filter((c): c is NonNullable<typeof c> => c !== null)
+      .sort((a, b) => (b.lastMessageAt ?? b.createdAt) - (a.lastMessageAt ?? a.createdAt));
+
+    // Apply cursor-based pagination
+    const cursor = args.cursor;
+    const afterCursor = cursor !== undefined
+      ? validConversations.filter((c) => (c.lastMessageAt ?? c.createdAt) < cursor)
+      : validConversations;
+
+    const myConversations = afterCursor.slice(0, limit);
 
     // Dedup participant lookups across all conversations
     const allParticipantIds = [...new Set(myConversations.flatMap((c) => c.participants))];
@@ -286,6 +289,14 @@ export const startConversation = mutation({
       lastMessageAt: now,
       createdAt: now,
     });
+
+    // Populate junction table for O(1) "my conversations" lookup
+    for (const participantId of allParticipants) {
+      await ctx.db.insert("conversationParticipants", {
+        conversationId,
+        accountId: participantId,
+      });
+    }
 
     return conversationId;
   },

@@ -271,15 +271,25 @@ export async function createConversation(
   const dmKey = type === "dm" ? [...participants!].sort().join("_") : undefined;
 
   const conversationId = await t.run(async (ctx) => {
-    return await ctx.db.insert("conversations", {
+    const convId = await ctx.db.insert("conversations", {
       participants: participants!,
       type,
       name: overrides.name,
       dmKey,
       caregiverAccess: overrides.caregiverAccess ?? true,
-      lastMessageAt: overrides.lastMessageAt,
+      lastMessageAt: overrides.lastMessageAt ?? now,
       createdAt: now,
     });
+
+    // Populate junction table
+    for (const pId of participants!) {
+      await ctx.db.insert("conversationParticipants", {
+        conversationId: convId,
+        accountId: pId,
+      });
+    }
+
+    return convId;
   });
 
   return { conversationId, participants };

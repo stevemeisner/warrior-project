@@ -135,8 +135,9 @@ export const getMySupportRequests = query({
     if (args.activeOnly) {
       requests = await ctx.db
         .query("supportRequests")
-        .withIndex("by_account", (q) => q.eq("accountId", account._id))
-        .filter((q) => q.eq(q.field("isActive"), true))
+        .withIndex("by_account_and_active", (q) =>
+          q.eq("accountId", account._id).eq("isActive", true)
+        )
         .collect();
     } else {
       requests = await ctx.db
@@ -185,15 +186,17 @@ export const getAvailableSupportRequests = query({
 
     const familyIds = caregiverRelations.map((r) => r.accountId);
 
-    // Get active support requests from those families
-    const allRequests = await ctx.db
-      .query("supportRequests")
-      .withIndex("by_active", (q) => q.eq("isActive", true))
-      .collect();
-
-    const relevantRequests = allRequests.filter((r) =>
-      familyIds.includes(r.accountId)
-    );
+    // Get active support requests per family using composite index
+    const relevantRequests = [];
+    for (const familyId of familyIds) {
+      const requests = await ctx.db
+        .query("supportRequests")
+        .withIndex("by_account_and_active", (q) =>
+          q.eq("accountId", familyId).eq("isActive", true)
+        )
+        .collect();
+      relevantRequests.push(...requests);
+    }
 
     // Enrich with family and warrior info
     const enrichedRequests = await Promise.all(
@@ -329,8 +332,9 @@ export const getActiveCount = query({
       // Family: count their own active requests
       const requests = await ctx.db
         .query("supportRequests")
-        .withIndex("by_account", (q) => q.eq("accountId", account._id))
-        .filter((q) => q.eq(q.field("isActive"), true))
+        .withIndex("by_account_and_active", (q) =>
+          q.eq("accountId", account._id).eq("isActive", true)
+        )
         .collect();
       return requests.length;
     } else {
@@ -342,12 +346,17 @@ export const getActiveCount = query({
         .collect();
 
       const familyIds = relations.map((r) => r.accountId);
-      const requests = await ctx.db
-        .query("supportRequests")
-        .withIndex("by_active", (q) => q.eq("isActive", true))
-        .collect();
-
-      return requests.filter((r) => familyIds.includes(r.accountId)).length;
+      let count = 0;
+      for (const familyId of familyIds) {
+        const requests = await ctx.db
+          .query("supportRequests")
+          .withIndex("by_account_and_active", (q) =>
+            q.eq("accountId", familyId).eq("isActive", true)
+          )
+          .collect();
+        count += requests.length;
+      }
+      return count;
     }
   },
 });

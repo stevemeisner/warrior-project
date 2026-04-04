@@ -184,6 +184,15 @@ export default defineSchema({
     .index("by_last_message", ["lastMessageAt"])
     .index("by_dmKey", ["dmKey"]),
 
+  // Junction table for O(1) "my conversations" lookup
+  conversationParticipants: defineTable({
+    conversationId: v.id("conversations"),
+    accountId: v.id("accounts"),
+  })
+    .index("by_account", ["accountId"])
+    .index("by_conversation", ["conversationId"])
+    .index("by_account_and_conversation", ["accountId", "conversationId"]),
+
   // Denormalized unread message counts per user per conversation
   unreadCounts: defineTable({
     conversationId: v.id("conversations"),
@@ -279,7 +288,8 @@ export default defineSchema({
   })
     .index("by_account", ["accountId"])
     .index("by_active", ["isActive"])
-    .index("by_warrior", ["warriorId"]),
+    .index("by_warrior", ["warriorId"])
+    .index("by_account_and_active", ["accountId", "isActive"]),
 
   // Comment likes - tracks who liked which comment (prevents duplicates)
   commentLikes: defineTable({
