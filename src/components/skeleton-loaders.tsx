@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 function Shimmer({ className }: { className?: string }) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-muted", className)}
+      className={cn("animate-pulse rounded-md bg-[oklch(0.94_0.012_80)]", className)}
       aria-hidden="true"
     />
   );
@@ -23,7 +23,7 @@ export function DashboardSkeleton() {
       {/* Stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-xl border bg-card p-6">
+          <div key={i} className="rounded-2xl bg-card shadow-[0_1px_4px_rgba(0,0,0,0.03),0_4px_16px_rgba(26,122,106,0.06)] p-6">
             <Shimmer className="h-8 w-12 mb-2" />
             <Shimmer className="h-4 w-24" />
           </div>
@@ -34,7 +34,8 @@ export function DashboardSkeleton() {
       <Shimmer className="h-7 w-36 mb-4" />
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="rounded-xl border bg-card p-4">
+          <div key={i} className="rounded-2xl bg-card shadow-[0_1px_4px_rgba(0,0,0,0.03),0_4px_16px_rgba(26,122,106,0.06)] p-4">
+            <div className="h-12 rounded-t-2xl -mx-4 -mt-4 mb-3 bg-gradient-to-br from-primary/20 to-secondary/20" aria-hidden="true" />
             <div className="flex items-center gap-3 mb-3">
               <Shimmer className="h-12 w-12 rounded-full" />
               <div className="flex-1">
@@ -58,7 +59,7 @@ export function MessagesSkeleton() {
       <Shimmer className="h-9 w-40 mb-6" />
       <div className="grid md:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
         {/* Conversation list */}
-        <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="rounded-2xl bg-card shadow-[0_1px_4px_rgba(0,0,0,0.03),0_4px_16px_rgba(26,122,106,0.06)] overflow-hidden">
           <div className="p-4 border-b">
             <Shimmer className="h-5 w-28" />
           </div>
@@ -73,7 +74,7 @@ export function MessagesSkeleton() {
           ))}
         </div>
         {/* Message area */}
-        <div className="md:col-span-2 rounded-xl border bg-card flex items-center justify-center">
+        <div className="md:col-span-2 rounded-2xl bg-card shadow-[0_1px_4px_rgba(0,0,0,0.03),0_4px_16px_rgba(26,122,106,0.06)] flex items-center justify-center">
           <Shimmer className="h-5 w-56" />
         </div>
       </div>
@@ -98,7 +99,7 @@ export function CommunitySkeleton() {
       <div className="grid md:grid-cols-2 gap-6">
         <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-xl border bg-card p-4">
+            <div key={i} className="rounded-2xl bg-card shadow-[0_1px_4px_rgba(0,0,0,0.03),0_4px_16px_rgba(26,122,106,0.06)] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Shimmer className="h-5 w-16" />
                 <Shimmer className="h-5 w-20" />
@@ -114,7 +115,7 @@ export function CommunitySkeleton() {
             </div>
           ))}
         </div>
-        <div className="rounded-xl border bg-card p-8 flex items-center justify-center">
+        <div className="rounded-2xl bg-card shadow-[0_1px_4px_rgba(0,0,0,0.03),0_4px_16px_rgba(26,122,106,0.06)] p-8 flex items-center justify-center">
           <Shimmer className="h-5 w-56" />
         </div>
       </div>
@@ -130,7 +131,7 @@ export function NotificationsSkeleton() {
         <Shimmer className="h-9 w-40" />
         <Shimmer className="h-9 w-32" />
       </div>
-      <div className="rounded-xl border bg-card">
+      <div className="rounded-2xl bg-card shadow-[0_1px_4px_rgba(0,0,0,0.03),0_4px_16px_rgba(26,122,106,0.06)]">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex items-start gap-4 p-4 border-b last:border-b-0">
             <Shimmer className="h-8 w-8 rounded" />

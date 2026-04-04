@@ -45,8 +45,8 @@ export function WarriorCard({
   return (
     <Card
       className={cn(
-        "transition-shadow",
-        onClick && "cursor-pointer hover:shadow-md",
+        "rounded-2xl border-0 shadow-[0_1px_4px_rgba(0,0,0,0.03),0_4px_16px_rgba(26,122,106,0.06)] card-hover",
+        onClick && "cursor-pointer",
         warrior.isFeather && "opacity-75"
       )}
       onClick={onClick}
@@ -54,12 +54,12 @@ export function WarriorCard({
       <CardHeader className={cn("flex flex-row items-center gap-4", compact && "pb-2")}>
         <Avatar className={compact ? "h-10 w-10" : "h-16 w-16"}>
           <AvatarImage src={warrior.profilePhoto} alt={warrior.name} />
-          <AvatarFallback className="bg-primary text-primary-foreground">
+          <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white">
             {initials}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <h3 className={cn("font-semibold", compact ? "text-base" : "text-lg")}>
+          <h3 className={cn("font-heading font-semibold", compact ? "text-base" : "text-lg")}>
             {warrior.name}
           </h3>
           {warrior.condition && !compact && (
