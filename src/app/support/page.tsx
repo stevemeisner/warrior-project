@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,6 +28,8 @@ import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { GradientHeader, ContentPanel } from "@/components/gradient-header";
+import { HeartHandshake, Plus } from "lucide-react";
 
 const helpTypeLabels: Record<string, { label: string; emoji: string }> = {
   meals: { label: "Meals", emoji: "🍽️" },
@@ -57,9 +59,19 @@ function SupportContent() {
 
   if (account === undefined) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-      </div>
+      <>
+        <GradientHeader>
+          <div className="flex items-center gap-3 pb-2">
+            <HeartHandshake className="h-6 w-6 text-white/80" strokeWidth={1.75} />
+            <h1 className="text-2xl font-heading font-bold text-white">Support</h1>
+          </div>
+        </GradientHeader>
+        <ContentPanel>
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          </div>
+        </ContentPanel>
+      </>
     );
   }
 
@@ -86,7 +98,7 @@ function SupportContent() {
       setSelectedWarrior("");
       setSelectedHelpTypes([]);
       setDescription("");
-    } catch (error) {
+    } catch {
       toast.error("Failed to create request");
     } finally {
       setIsCreating(false);
@@ -100,269 +112,285 @@ function SupportContent() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Support</h1>
-          <p className="text-muted-foreground">
-            {isFamily
-              ? "Ask for help when you need it"
-              : "See how you can help families you care for"}
-          </p>
-        </div>
-        {isFamily && (
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button>Ask for Help</Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Request Support</DialogTitle>
-                <DialogDescription>
-                  Let your caregivers know what kind of help you need.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreateRequest} className="space-y-4">
-                {warriors && warriors.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>For warrior (optional)</Label>
-                    <Select value={selectedWarrior} onValueChange={setSelectedWarrior}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a warrior" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">General request</SelectItem>
-                        {warriors.map((w) => (
-                          <SelectItem key={w._id} value={w._id}>
-                            {w.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label>What kind of help do you need?</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(helpTypeLabels).map(([key, { label, emoji }]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        className={cn(
-                          "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-colors",
-                          selectedHelpTypes.includes(key)
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background border-border hover:bg-muted"
-                        )}
-                        onClick={() => toggleHelpType(key)}
-                      >
-                        <span>{emoji}</span>
-                        <span>{label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Details (optional)</Label>
-                  <Textarea
-                    id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Tell your caregivers more about what you need..."
-                    rows={3}
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsCreateOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isCreating}>
-                    {isCreating ? "Sending..." : "Send Request"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
-
-      {/* Family view: my requests */}
-      {isFamily && (
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold">Your Requests</h2>
-          {myRequests === undefined ? (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="animate-pulse rounded-xl border bg-card p-4 h-24" />
-              ))}
+    <>
+      <GradientHeader>
+        <div className="flex items-center justify-between pb-2">
+          <div className="flex items-center gap-3">
+            <HeartHandshake className="h-6 w-6 text-white/80" strokeWidth={1.75} />
+            <div>
+              <h1 className="text-2xl font-heading font-bold text-white">Support</h1>
+              <p className="text-white/70 text-sm">
+                {isFamily
+                  ? "Ask for help when you need it"
+                  : "See how you can help families you care for"}
+              </p>
             </div>
-          ) : myRequests.length > 0 ? (
-            <div className="space-y-3">
-              {myRequests.map((request: any) => (
-                <Card key={request._id}>
-                  <CardContent className="pt-4 pb-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge
-                            variant={request.isActive ? "default" : "secondary"}
-                            className="rounded-full"
-                          >
-                            {request.isActive ? "Active" : "Closed"}
-                          </Badge>
-                          {request.warriorName && (
-                            <span className="text-sm text-muted-foreground">
-                              for {request.warriorName}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-1.5 mb-2">
-                          {request.helpTypes.map((type: string) => (
-                            <span
-                              key={type}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs"
-                            >
-                              {helpTypeLabels[type]?.emoji} {helpTypeLabels[type]?.label || type}
-                            </span>
+          </div>
+          {isFamily && (
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  size="sm"
+                  className="bg-white/20 hover:bg-white/30 text-white border-0"
+                >
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Ask for Help
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="font-heading">Request Support</DialogTitle>
+                  <DialogDescription>
+                    Let your caregivers know what kind of help you need.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateRequest} className="space-y-4">
+                  {warriors && warriors.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>For warrior (optional)</Label>
+                      <Select value={selectedWarrior} onValueChange={setSelectedWarrior}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a warrior" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">General request</SelectItem>
+                          {warriors.map((w) => (
+                            <SelectItem key={w._id} value={w._id}>
+                              {w.name}
+                            </SelectItem>
                           ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label>What kind of help do you need?</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(helpTypeLabels).map(([key, { label, emoji }]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-colors",
+                            selectedHelpTypes.includes(key)
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background border-border hover:bg-muted"
+                          )}
+                          onClick={() => toggleHelpType(key)}
+                        >
+                          <span>{emoji}</span>
+                          <span>{label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Details (optional)</Label>
+                    <Textarea
+                      id="description"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Tell your caregivers more about what you need..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsCreateOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isCreating}>
+                      {isCreating ? "Sending..." : "Send Request"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+      </GradientHeader>
+
+      <ContentPanel>
+        {/* Family view: my requests */}
+        {isFamily && (
+          <section className="space-y-4">
+            <p className="section-label">Your Requests</p>
+            {myRequests === undefined ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="animate-pulse rounded-2xl border bg-card p-4 h-24" />
+                ))}
+              </div>
+            ) : myRequests.length > 0 ? (
+              <div className="space-y-3">
+                {myRequests.map((request: any) => (
+                  <Card key={request._id} className="rounded-2xl border-0 shadow-sm">
+                    <CardContent className="pt-4 pb-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge
+                              variant={request.isActive ? "default" : "secondary"}
+                              className="rounded-full"
+                            >
+                              {request.isActive ? "Active" : "Closed"}
+                            </Badge>
+                            {request.warriorName && (
+                              <span className="text-sm text-muted-foreground">
+                                for {request.warriorName}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {request.helpTypes.map((type: string) => (
+                              <span
+                                key={type}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs"
+                              >
+                                {helpTypeLabels[type]?.emoji} {helpTypeLabels[type]?.label || type}
+                              </span>
+                            ))}
+                          </div>
+                          {request.description && (
+                            <p className="text-sm text-muted-foreground">{request.description}</p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(request.createdAt).toLocaleDateString()}
+                          </p>
                         </div>
-                        {request.description && (
-                          <p className="text-sm text-muted-foreground">{request.description}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(request.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        {request.isActive && (
+                        <div className="flex gap-2">
+                          {request.isActive && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="rounded-xl"
+                              onClick={async () => {
+                                try {
+                                  await updateRequest({
+                                    requestId: request._id,
+                                    isActive: false,
+                                  });
+                                  toast.success("Request closed");
+                                } catch {
+                                  toast.error("Failed to close request");
+                                }
+                              }}
+                            >
+                              Close
+                            </Button>
+                          )}
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
+                            className="text-destructive"
                             onClick={async () => {
                               try {
-                                await updateRequest({
-                                  requestId: request._id,
-                                  isActive: false,
-                                });
-                                toast.success("Request closed");
+                                await deleteRequest({ requestId: request._id });
+                                toast.success("Request deleted");
                               } catch {
-                                toast.error("Failed to close request");
+                                toast.error("Failed to delete request");
                               }
                             }}
                           >
-                            Close
+                            Delete
                           </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive"
-                          onClick={async () => {
-                            try {
-                              await deleteRequest({ requestId: request._id });
-                              toast.success("Request deleted");
-                            } catch {
-                              toast.error("Failed to delete request");
-                            }
-                          }}
-                        >
-                          Delete
-                        </Button>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground mb-2">No support requests yet</p>
-                <p className="text-sm text-muted-foreground">
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="py-16 text-center text-muted-foreground">
+                <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-muted mb-4">
+                  <HeartHandshake className="h-8 w-8 text-muted-foreground/50" strokeWidth={1.75} />
+                </div>
+                <p className="font-heading font-semibold text-foreground mb-1">No requests yet</p>
+                <p className="text-sm">
                   When you need help, your caregivers will be notified.
                 </p>
-              </CardContent>
-            </Card>
-          )}
-        </section>
-      )}
+              </div>
+            )}
+          </section>
+        )}
 
-      {/* Caregiver view: available requests from families */}
-      {!isFamily && (
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold">Families Needing Help</h2>
-          {availableRequests === undefined ? (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="animate-pulse rounded-xl border bg-card p-4 h-24" />
-              ))}
-            </div>
-          ) : availableRequests.length > 0 ? (
-            <div className="space-y-3">
-              {availableRequests.map((request: any) => (
-                <Card key={request._id}>
-                  <CardContent className="pt-4 pb-4">
-                    <div className="flex items-start gap-4">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={request.familyPhoto} />
-                        <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                          {request.familyName?.[0]?.toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium">{request.familyName}</span>
-                          {request.warriorName && (
-                            <span className="text-sm text-muted-foreground">
-                              for {request.warriorName}
-                            </span>
+        {/* Caregiver view: available requests from families */}
+        {!isFamily && (
+          <section className="space-y-4">
+            <p className="section-label">Families Needing Help</p>
+            {availableRequests === undefined ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="animate-pulse rounded-2xl border bg-card p-4 h-24" />
+                ))}
+              </div>
+            ) : availableRequests.length > 0 ? (
+              <div className="space-y-3">
+                {availableRequests.map((request: any) => (
+                  <Card key={request._id} className="rounded-2xl border-0 shadow-sm">
+                    <CardContent className="pt-4 pb-4">
+                      <div className="flex items-start gap-4">
+                        <Avatar className="h-11 w-11">
+                          <AvatarImage src={request.familyPhoto} />
+                          <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-sm font-semibold">
+                            {request.familyName?.[0]?.toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-heading font-semibold">{request.familyName}</span>
+                            {request.warriorName && (
+                              <span className="text-sm text-muted-foreground">
+                                for {request.warriorName}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {request.helpTypes.map((type: string) => (
+                              <span
+                                key={type}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs"
+                              >
+                                {helpTypeLabels[type]?.emoji} {helpTypeLabels[type]?.label || type}
+                              </span>
+                            ))}
+                          </div>
+                          {request.description && (
+                            <p className="text-sm text-muted-foreground">{request.description}</p>
                           )}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(request.createdAt).toLocaleDateString()}
+                          </p>
                         </div>
-                        <div className="flex flex-wrap gap-1.5 mb-2">
-                          {request.helpTypes.map((type: string) => (
-                            <span
-                              key={type}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs"
-                            >
-                              {helpTypeLabels[type]?.emoji} {helpTypeLabels[type]?.label || type}
-                            </span>
-                          ))}
-                        </div>
-                        {request.description && (
-                          <p className="text-sm text-muted-foreground">{request.description}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(request.createdAt).toLocaleDateString()}
-                        </p>
+                        <Link href={`/messages?to=${request.accountId}`}>
+                          <Button size="sm" className="rounded-xl shrink-0">Reach Out</Button>
+                        </Link>
                       </div>
-                      <Link href={`/messages?to=${request.accountId}`}>
-                        <Button size="sm">Reach Out</Button>
-                      </Link>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground mb-2">No active support requests</p>
-                <p className="text-sm text-muted-foreground">
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="py-16 text-center text-muted-foreground">
+                <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-muted mb-4">
+                  <HeartHandshake className="h-8 w-8 text-muted-foreground/50" strokeWidth={1.75} />
+                </div>
+                <p className="font-heading font-semibold text-foreground mb-1">No active requests</p>
+                <p className="text-sm">
                   When a family you care for needs help, their requests will appear here.
                 </p>
-              </CardContent>
-            </Card>
-          )}
-        </section>
-      )}
-    </div>
+              </div>
+            )}
+          </section>
+        )}
+      </ContentPanel>
+    </>
   );
 }
 
@@ -370,9 +398,17 @@ export default function SupportPage() {
   return (
     <>
       <AuthLoading>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-        </div>
+        <GradientHeader>
+          <div className="flex items-center gap-3 pb-2">
+            <HeartHandshake className="h-6 w-6 text-white/80" strokeWidth={1.75} />
+            <h1 className="text-2xl font-heading font-bold text-white">Support</h1>
+          </div>
+        </GradientHeader>
+        <ContentPanel>
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          </div>
+        </ContentPanel>
       </AuthLoading>
       <Unauthenticated>
         <div className="flex items-center justify-center min-h-screen">

@@ -4,12 +4,12 @@ import { useQuery, useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { NotificationsSkeleton } from "@/components/skeleton-loaders";
+import { GradientHeader, ContentPanel } from "@/components/gradient-header";
 import {
   Activity,
   MessageCircle,
@@ -45,14 +45,11 @@ function NotificationsContent() {
     await markAsRead({ notificationId: notificationId as any });
   };
 
-  // Navigate to the relevant page based on notification type
   const handleNotificationClick = async (notification: NonNullable<typeof notifications>[0]) => {
-    // Mark as read first
     if (!notification.isRead) {
       await markAsRead({ notificationId: notification._id as any });
     }
 
-    // Navigate based on notification type and related entities
     if (notification.type === "newMessage" && notification.relatedConversationId) {
       router.push("/messages");
     } else if (notification.type === "threadReply" && notification.relatedThreadId) {
@@ -77,110 +74,155 @@ function NotificationsContent() {
   const unreadCount = notifications?.filter((n) => !n.isRead).length || 0;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">Notifications</h1>
-        {unreadCount > 0 && (
-          <Button variant="outline" onClick={handleMarkAllAsRead}>
-            Mark all as read
-          </Button>
-        )}
-      </div>
+    <>
+      <GradientHeader>
+        <div className="flex items-center justify-between pb-2">
+          <div className="flex items-center gap-3">
+            <Bell className="h-6 w-6 text-white/80" />
+            <h1 className="text-2xl font-heading font-bold text-white">Notifications</h1>
+          </div>
+          {unreadCount > 0 && (
+            <span className="bg-white/20 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+              {unreadCount} unread
+            </span>
+          )}
+        </div>
+      </GradientHeader>
 
-      <Card>
-        <CardContent className="p-0">
-          {notifications && notifications.length > 0 ? (
-            <div className="divide-y">
-              {notifications.map((notification) => (
+      <ContentPanel>
+        {unreadCount > 0 && (
+          <div className="flex justify-end mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleMarkAllAsRead}
+              className="text-muted-foreground text-xs"
+            >
+              <Check className="h-3.5 w-3.5 mr-1.5" />
+              Mark all as read
+            </Button>
+          </div>
+        )}
+
+        {notifications === undefined ? (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="animate-pulse flex items-start gap-4 py-4 border-b border-border">
+                <div className="h-10 w-10 rounded-xl bg-muted shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-1/2 bg-muted rounded" />
+                  <div className="h-3 w-3/4 bg-muted rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : notifications.length > 0 ? (
+          <div>
+            {notifications.map((notification, idx) => {
+              const iconInfo = notificationIcons[notification.type] || {
+                Icon: Bell,
+                color: "bg-muted text-muted-foreground",
+              };
+              const IconComp = iconInfo.Icon;
+              return (
                 <div
                   key={notification._id}
                   onClick={() => handleNotificationClick(notification)}
                   className={cn(
-                    "p-4 flex items-start gap-4 hover:bg-muted/50 transition-colors cursor-pointer",
-                    !notification.isRead && "bg-primary/5"
+                    "flex items-start gap-4 py-4 cursor-pointer transition-colors",
+                    idx < notifications.length - 1 && "border-b border-border",
+                    !notification.isRead && "bg-primary/3 -mx-5 px-5 rounded-lg"
                   )}
                 >
-                  {(() => {
-                    const iconInfo = notificationIcons[notification.type] || { Icon: Bell, color: "bg-muted text-muted-foreground" };
-                    const IconComp = iconInfo.Icon;
-                    return (
-                      <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shrink-0", iconInfo.color)}>
-                        <IconComp className="h-5 w-5" strokeWidth={1.75} />
-                      </div>
-                    );
-                  })()}
+                  <div
+                    className={cn(
+                      "h-10 w-10 rounded-xl flex items-center justify-center shrink-0",
+                      iconInfo.color
+                    )}
+                  >
+                    <IconComp className="h-5 w-5" strokeWidth={1.75} />
+                  </div>
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium">{notification.title}</p>
-                        <p className="text-sm text-muted-foreground">
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("text-sm leading-snug", !notification.isRead ? "font-semibold" : "font-medium")}>
+                          {notification.title}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-0.5 leading-snug">
                           {notification.message}
                         </p>
                       </div>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(notification.createdAt).toLocaleDateString()}
-                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {!notification.isRead && (
+                          <span className="h-2 w-2 rounded-full bg-primary" />
+                        )}
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(notification.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
                     </div>
+
                     {notification.relatedAccount && (
                       <div className="flex items-center gap-2 mt-2">
                         <Avatar className="h-5 w-5">
-                          <AvatarImage
-                            src={notification.relatedAccount.profilePhoto}
-                          />
+                          <AvatarImage src={notification.relatedAccount.profilePhoto} />
                           <AvatarFallback className="text-xs">
                             {notification.relatedAccount.name?.[0]}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {notification.relatedAccount.name}
                         </span>
                       </div>
                     )}
-                    <div className="flex items-center gap-2 mt-2">
+
+                    <div className="flex items-center gap-1 mt-2">
                       {!notification.isRead && (
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="h-7 text-xs text-muted-foreground px-2"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleMarkAsRead(notification._id.toString());
                           }}
                         >
-                          <Check className="h-3.5 w-3.5 mr-1" />
-                          Mark as read
+                          <Check className="h-3 w-3 mr-1" />
+                          Mark read
                         </Button>
                       )}
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-muted-foreground"
+                        className="h-7 text-xs text-muted-foreground px-2"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDelete(notification._id.toString());
                         }}
                       >
-                        <Trash2 className="h-3.5 w-3.5 mr-1" />
+                        <Trash2 className="h-3 w-3 mr-1" />
                         Delete
                       </Button>
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+            })}
+          </div>
+        ) : (
+          <div className="py-20 text-center text-muted-foreground">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-muted mb-4">
+              <Bell className="h-8 w-8 text-muted-foreground/50" strokeWidth={1.75} />
             </div>
-          ) : (
-            <div className="py-12 text-center text-muted-foreground">
-              <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-muted mb-4">
-                <Bell className="h-7 w-7" strokeWidth={1.75} />
-              </div>
-              <p className="font-medium text-foreground">No notifications yet</p>
-              <p className="text-sm mt-1">
-                You&apos;ll see updates here when there&apos;s activity
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+            <p className="font-heading font-semibold text-foreground mb-1">All caught up</p>
+            <p className="text-sm">
+              You&apos;ll see updates here when there&apos;s activity.
+            </p>
+          </div>
+        )}
+      </ContentPanel>
+    </>
   );
 }
 

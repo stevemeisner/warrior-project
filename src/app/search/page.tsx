@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
+import { GradientHeader, ContentPanel } from "@/components/gradient-header";
 import {
   Search,
   Users,
@@ -54,190 +55,188 @@ function SearchContent() {
       results.threads.length > 0);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="flex items-center gap-2 mb-6">
-        <Search className="h-7 w-7 text-primary" />
-        <h1 className="text-3xl font-bold">Search</h1>
-      </div>
-
-      <div className="relative mb-8">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Search people, warriors, discussions..."
-          className="pl-10"
-          autoFocus
-        />
-      </div>
-
-      {!debouncedQuery && (
-        <div className="text-center py-16 text-muted-foreground">
-          <Search className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
-          <p className="text-lg font-medium mb-1">Find what you need</p>
-          <p className="text-sm">
-            Search for people, warriors, or community discussions.
-          </p>
+    <>
+      <GradientHeader>
+        <div className="flex items-center gap-3 pb-2">
+          <Search className="h-6 w-6 text-white/80" />
+          <h1 className="text-2xl font-heading font-bold text-white">Search</h1>
         </div>
-      )}
+      </GradientHeader>
 
-      {debouncedQuery && results === undefined && (
-        <div className="space-y-4" role="status" aria-label="Loading results">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="animate-pulse rounded-xl border bg-card p-4">
-              <div className="h-5 w-24 bg-muted rounded mb-3" />
-              <div className="h-4 w-3/4 bg-muted rounded mb-2" />
-              <div className="h-4 w-1/2 bg-muted rounded" />
+      <ContentPanel>
+        <div className="relative mb-6">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="Search people, warriors, discussions..."
+            className="pl-10 h-11 rounded-xl"
+            autoFocus
+          />
+        </div>
+
+        {!debouncedQuery && (
+          <div className="text-center py-16 text-muted-foreground">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-muted mb-4">
+              <Search className="h-8 w-8 text-muted-foreground/50" strokeWidth={1.75} />
             </div>
-          ))}
-          <span className="sr-only">Loading search results</span>
-        </div>
-      )}
+            <p className="font-heading font-semibold text-foreground mb-1">Find what you need</p>
+            <p className="text-sm">
+              Search for people, warriors, or community discussions.
+            </p>
+          </div>
+        )}
 
-      {debouncedQuery && results && !hasResults && (
-        <div className="text-center py-16 text-muted-foreground">
-          <Search className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
-          <p className="text-lg font-medium mb-1">No results found</p>
-          <p className="text-sm">
-            Try a different search term or check your spelling.
-          </p>
-        </div>
-      )}
+        {debouncedQuery && results === undefined && (
+          <div className="space-y-3" role="status" aria-label="Loading results">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="animate-pulse rounded-2xl border bg-card p-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-muted shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-1/3 bg-muted rounded" />
+                    <div className="h-3 w-1/2 bg-muted rounded" />
+                  </div>
+                </div>
+              </div>
+            ))}
+            <span className="sr-only">Loading search results</span>
+          </div>
+        )}
 
-      {results && hasResults && (
-        <div className="space-y-8">
-          {/* People */}
-          {results.accounts.length > 0 && (
-            <section>
-              <div className="flex items-center gap-2 mb-3">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        {debouncedQuery && results && !hasResults && (
+          <div className="text-center py-16 text-muted-foreground">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-muted mb-4">
+              <Search className="h-8 w-8 text-muted-foreground/50" strokeWidth={1.75} />
+            </div>
+            <p className="font-heading font-semibold text-foreground mb-1">No results found</p>
+            <p className="text-sm">
+              Try a different search term or check your spelling.
+            </p>
+          </div>
+        )}
+
+        {results && hasResults && (
+          <div className="space-y-8">
+            {/* People */}
+            {results.accounts.length > 0 && (
+              <section>
+                <p className="section-label flex items-center gap-1.5 mb-3">
+                  <Users className="h-3.5 w-3.5" />
                   People
-                </h2>
-              </div>
-              <div className="space-y-2">
-                {results.accounts.map((account: any) => (
-                  <Link
-                    key={account._id}
-                    href={`/profile/${account._id}`}
-                  >
-                    <Card className="card-hover rounded-xl">
-                      <CardContent className="flex items-center gap-3 py-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={account.profilePhoto} />
-                          <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                            {account.name?.[0]?.toUpperCase() || "?"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{account.name}</p>
-                          <p className="text-sm text-muted-foreground capitalize">
-                            {account.role}
-                          </p>
-                        </div>
-                        <User className="h-4 w-4 text-muted-foreground" />
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Warriors */}
-          {results.warriors.length > 0 && (
-            <section>
-              <div className="flex items-center gap-2 mb-3">
-                <Heart className="h-4 w-4 text-muted-foreground" />
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Warriors
-                </h2>
-              </div>
-              <div className="space-y-2">
-                {results.warriors.map((warrior: any) => (
-                  <Link
-                    key={warrior._id}
-                    href={`/profile/${warrior.accountId}`}
-                  >
-                    <Card className="card-hover rounded-xl">
-                      <CardContent className="flex items-center gap-3 py-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={warrior.profilePhoto} />
-                          <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                            {warrior.name?.[0]?.toUpperCase() || "?"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{warrior.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {warrior.condition
-                              ? `${warrior.condition} · `
-                              : ""}
-                            Family: {warrior.accountName}
-                          </p>
-                        </div>
-                        <Badge
-                          variant="secondary"
-                          className="rounded-full text-xs capitalize"
-                        >
-                          {warrior.currentStatus}
-                        </Badge>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Threads */}
-          {results.threads.length > 0 && (
-            <section>
-              <div className="flex items-center gap-2 mb-3">
-                <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Discussions
-                </h2>
-              </div>
-              <div className="space-y-2">
-                {results.threads.map((thread: any) => {
-                  const cat = categoryColors[thread.category];
-                  return (
-                    <Link key={thread._id} href="/community">
-                      <Card className="card-hover rounded-xl">
-                        <CardContent className="py-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">
-                                {thread.title}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                                <span>{thread.authorName}</span>
-                                <span className="flex items-center gap-0.5">
-                                  <MessageCircle className="h-3 w-3" />
-                                  {thread.commentCount}
-                                </span>
-                              </div>
-                            </div>
-                            {cat && (
-                              <Badge
-                                className={`rounded-full text-xs ${cat.bg} ${cat.text}`}
-                              >
-                                {thread.category}
-                              </Badge>
-                            )}
+                </p>
+                <div className="space-y-2">
+                  {results.accounts.map((account: any) => (
+                    <Link key={account._id} href={`/profile/${account._id}`}>
+                      <Card className="card-hover rounded-2xl border-0 shadow-sm">
+                        <CardContent className="flex items-center gap-3 py-3 px-4">
+                          <Avatar className="h-11 w-11">
+                            <AvatarImage src={account.profilePhoto} />
+                            <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-sm font-semibold">
+                              {account.name?.[0]?.toUpperCase() || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-heading font-semibold truncate">{account.name}</p>
+                            <p className="text-sm text-muted-foreground capitalize">
+                              {account.role}
+                            </p>
                           </div>
+                          <User className="h-4 w-4 text-muted-foreground shrink-0" />
                         </CardContent>
                       </Card>
                     </Link>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-        </div>
-      )}
-    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Warriors */}
+            {results.warriors.length > 0 && (
+              <section>
+                <p className="section-label flex items-center gap-1.5 mb-3">
+                  <Heart className="h-3.5 w-3.5" />
+                  Warriors
+                </p>
+                <div className="space-y-2">
+                  {results.warriors.map((warrior: any) => (
+                    <Link key={warrior._id} href={`/profile/${warrior.accountId}`}>
+                      <Card className="card-hover rounded-2xl border-0 shadow-sm">
+                        <CardContent className="flex items-center gap-3 py-3 px-4">
+                          <Avatar className="h-11 w-11">
+                            <AvatarImage src={warrior.profilePhoto} />
+                            <AvatarFallback className="bg-gradient-to-br from-rose-400 to-primary text-white text-sm font-semibold">
+                              {warrior.name?.[0]?.toUpperCase() || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-heading font-semibold truncate">{warrior.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {warrior.condition ? `${warrior.condition} · ` : ""}
+                              Family: {warrior.accountName}
+                            </p>
+                          </div>
+                          <Badge
+                            variant="secondary"
+                            className="rounded-full text-xs capitalize shrink-0"
+                          >
+                            {warrior.currentStatus}
+                          </Badge>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Threads */}
+            {results.threads.length > 0 && (
+              <section>
+                <p className="section-label flex items-center gap-1.5 mb-3">
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  Discussions
+                </p>
+                <div className="space-y-2">
+                  {results.threads.map((thread: any) => {
+                    const cat = categoryColors[thread.category];
+                    return (
+                      <Link key={thread._id} href="/community">
+                        <Card className="card-hover rounded-2xl border-0 shadow-sm">
+                          <CardContent className="py-3 px-4">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-heading font-semibold truncate">
+                                  {thread.title}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                                  <span>{thread.authorName}</span>
+                                  <span className="flex items-center gap-0.5">
+                                    <MessageCircle className="h-3 w-3" />
+                                    {thread.commentCount}
+                                  </span>
+                                </div>
+                              </div>
+                              {cat && (
+                                <Badge
+                                  className={`rounded-full text-xs shrink-0 border-0 ${cat.bg} ${cat.text}`}
+                                >
+                                  {thread.category}
+                                </Badge>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+          </div>
+        )}
+      </ContentPanel>
+    </>
   );
 }
 
@@ -245,12 +244,19 @@ export default function SearchPage() {
   return (
     <>
       <AuthLoading>
-        <div className="container mx-auto px-4 py-8 max-w-2xl">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 w-32 bg-muted rounded" />
-            <div className="h-10 w-full bg-muted rounded" />
+        <GradientHeader>
+          <div className="flex items-center gap-3 pb-2">
+            <Search className="h-6 w-6 text-white/80" />
+            <h1 className="text-2xl font-heading font-bold text-white">Search</h1>
           </div>
-        </div>
+        </GradientHeader>
+        <ContentPanel>
+          <div className="animate-pulse space-y-3">
+            <div className="h-11 w-full bg-muted rounded-xl" />
+            <div className="h-16 w-full bg-muted rounded-2xl" />
+            <div className="h-16 w-full bg-muted rounded-2xl" />
+          </div>
+        </ContentPanel>
       </AuthLoading>
       <Unauthenticated>
         <div className="flex items-center justify-center min-h-screen">
