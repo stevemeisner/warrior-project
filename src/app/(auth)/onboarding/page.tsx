@@ -206,7 +206,7 @@ export default function OnboardingPage() {
   // Loading state
   if (authUser === undefined || existingAccount === undefined) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
           <p className="text-muted-foreground">Loading...</p>
@@ -216,8 +216,18 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="flex min-h-screen items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md">
+        {/* Branding */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center gap-2">
+            <Shield className="h-8 w-8 text-primary" />
+            <span className="font-heading text-2xl font-bold text-primary">
+              Warrior Project
+            </span>
+          </div>
+        </div>
+
         {/* Progress indicator */}
         {currentStep !== "role" && (
           <div className="flex items-center gap-2 mb-6 px-2">
@@ -237,7 +247,8 @@ export default function OnboardingPage() {
         {currentStep === "role" && (
           <Card>
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl">Welcome to Warrior Project</CardTitle>
+              {/* NanoBanana illustration placeholder */}
+              <CardTitle className="font-heading text-2xl">Welcome to Warrior Project</CardTitle>
               <CardDescription>
                 How would you like to be part of our community?
               </CardDescription>
@@ -249,7 +260,7 @@ export default function OnboardingPage() {
                   onClick={() => handleRoleSelect(option.value)}
                   disabled={isSubmitting}
                   className={cn(
-                    "w-full p-4 rounded-lg border-2 text-left transition-all hover:border-primary disabled:opacity-50",
+                    "w-full p-4 rounded-xl border-2 text-left transition-all hover:border-primary disabled:opacity-50",
                     selectedRole === option.value ? "border-primary bg-primary/5" : "border-border"
                   )}
                 >
@@ -275,9 +286,10 @@ export default function OnboardingPage() {
         {currentStep === "warrior" && (
           <Card>
             <CardHeader>
+              {/* NanoBanana illustration placeholder */}
               <div className="flex items-center gap-2">
                 <Shield className="h-5 w-5 text-primary" />
-                <CardTitle>Add Your Warrior</CardTitle>
+                <CardTitle className="font-heading">Add Your Warrior</CardTitle>
               </div>
               <CardDescription>
                 Tell us about your warrior. You can add more later.
@@ -343,9 +355,10 @@ export default function OnboardingPage() {
         {currentStep === "location" && (
           <Card>
             <CardHeader>
+              {/* NanoBanana illustration placeholder */}
               <div className="flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-primary" />
-                <CardTitle>Set Your Location</CardTitle>
+                <CardTitle className="font-heading">Set Your Location</CardTitle>
               </div>
               <CardDescription>
                 Help other families and caregivers find you on the map. This is optional.
@@ -402,10 +415,11 @@ export default function OnboardingPage() {
         {currentStep === "done" && (
           <Card>
             <CardHeader className="text-center">
+              {/* NanoBanana illustration placeholder */}
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
                 <Check className="h-8 w-8 text-green-600" />
               </div>
-              <CardTitle className="text-2xl">You&apos;re All Set!</CardTitle>
+              <CardTitle className="font-heading text-2xl">You&apos;re all set!</CardTitle>
               <CardDescription>
                 {selectedRole === "family"
                   ? "Your account is ready. Start connecting with other families and caregivers."

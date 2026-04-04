@@ -43,7 +43,7 @@ export function SignInForm() {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Welcome Back</CardTitle>
+        <CardTitle className="font-heading text-2xl">Welcome back</CardTitle>
         <CardDescription>
           Sign in to continue to Warrior Project
         </CardDescription>

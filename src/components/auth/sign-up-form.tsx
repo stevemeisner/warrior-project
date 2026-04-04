@@ -126,7 +126,7 @@ export function SignUpForm() {
     return (
       <Card className="w-full max-w-md mx-auto">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Join Warrior Project</CardTitle>
+          <CardTitle className="font-heading text-2xl">Join Warrior Project</CardTitle>
           <CardDescription>
             How would you like to be part of our community?
           </CardDescription>
@@ -167,7 +167,7 @@ export function SignUpForm() {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Create Your Account</CardTitle>
+        <CardTitle className="font-heading text-2xl">Create your account</CardTitle>
         <CardDescription>
           Joining as {role === "family" ? "a Family" : "a Caregiver"}
           <button
