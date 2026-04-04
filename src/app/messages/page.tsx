@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { MessagesSkeleton } from "@/components/skeleton-loaders";
 import { MessageCircle, Send, Inbox } from "lucide-react";
 import { useTypingIndicator } from "@/hooks/use-typing-indicator";
+import { GradientHeader, ContentPanel } from "@/components/gradient-header";
 
 function MessagesContent() {
   const searchParams = useSearchParams();
@@ -110,239 +111,244 @@ function MessagesContent() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 rounded-xl bg-primary/10">
-          <MessageCircle className="h-6 w-6 text-primary" />
+    <>
+      <GradientHeader>
+        <div className="flex items-center gap-3 pb-2">
+          <MessageCircle className="h-6 w-6 text-white/80" />
+          <h1 className="text-2xl font-heading font-bold text-white">Messages</h1>
         </div>
-        <h1 className="text-3xl font-bold">Messages</h1>
-      </div>
+      </GradientHeader>
 
-      <div className="grid md:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
-        {/* Conversation List */}
-        <Card className="md:col-span-1 overflow-hidden border-0 shadow-md bg-card/80 backdrop-blur-sm">
-          <CardHeader className="pb-3 border-b border-border/50">
-            <CardTitle className="text-base font-semibold text-muted-foreground uppercase tracking-wide">
-              Conversations
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
-              {conversations && conversations.length > 0 ? (
-                conversations.map((conv) => {
-                  const otherParticipant = conv.participants?.find(
-                    (p: any) => p !== null
-                  );
-                  const initials = otherParticipant?.name
-                    ?.split(" ")
-                    .map((n: string) => n[0])
-                    .join("")
-                    .toUpperCase()
-                    .slice(0, 2) || "?";
-                  const isSelected = selectedConversationId === conv._id.toString();
-                  const hasUnread = conv.unreadCount > 0;
-
-                  return (
-                    <button
-                      key={conv._id}
-                      onClick={() => handleSelectConversation(conv._id.toString())}
-                      className={cn(
-                        "w-full p-4 text-left transition-all duration-200 border-b border-border/30 last:border-b-0",
-                        isSelected
-                          ? "bg-primary/8 border-l-3 border-l-primary"
-                          : "hover:bg-muted/50"
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <Avatar className={cn(
-                            "h-11 w-11 ring-2 transition-all",
-                            isSelected ? "ring-primary/30" : "ring-transparent"
-                          )}>
-                            <AvatarImage src={otherParticipant?.profilePhoto} />
-                            <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold">
-                              {initials}
-                            </AvatarFallback>
-                          </Avatar>
-                          {hasUnread && (
-                            <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-blue-500 ring-2 ring-card" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-center">
-                            <p className={cn(
-                              "truncate",
-                              hasUnread ? "font-bold text-foreground" : "font-medium text-foreground/90"
-                            )}>
-                              {conv.name || otherParticipant?.name || "Unknown"}
-                            </p>
-                            {hasUnread && (
-                              <span className="bg-blue-500 text-white text-[10px] font-bold min-w-[20px] h-5 flex items-center justify-center px-1.5 rounded-full">
-                                {conv.unreadCount}
-                              </span>
-                            )}
-                          </div>
-                          {conv.lastMessage && (
-                            <p className={cn(
-                              "text-sm truncate mt-0.5",
-                              hasUnread ? "text-foreground/70 font-medium" : "text-muted-foreground"
-                            )}>
-                              {conv.lastMessage.content}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-                  <div className="p-4 rounded-full bg-muted/50 mb-4">
-                    <Inbox className="h-8 w-8 text-muted-foreground/50" />
-                  </div>
-                  <p className="font-medium text-muted-foreground mb-1">No conversations yet</p>
-                  <p className="text-sm text-muted-foreground/70">
-                    Visit a profile and send a message to get started
-                  </p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Message Thread */}
-        <Card className="md:col-span-2 flex flex-col overflow-hidden border-0 shadow-md bg-card/80 backdrop-blur-sm">
-          {selectedConversation ? (
-            <>
-              <CardHeader className="pb-3 border-b border-border/50">
-                <div className="flex items-center gap-3">
-                  {(() => {
-                    const participant = selectedConversation.participants?.find(p => p !== null);
-                    const initials = participant?.name
+      <ContentPanel className="!pt-4">
+        <div className="grid md:grid-cols-3 gap-4 h-[calc(100vh-220px)]">
+          {/* Conversation List */}
+          <Card className="md:col-span-1 overflow-hidden border-0 shadow-sm rounded-2xl bg-white dark:bg-card">
+            <CardHeader className="pb-3 border-b border-border/40">
+              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+                Conversations
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="max-h-[calc(100vh-330px)] overflow-y-auto">
+                {conversations && conversations.length > 0 ? (
+                  conversations.map((conv) => {
+                    const otherParticipant = conv.participants?.find(
+                      (p: any) => p !== null
+                    );
+                    const initials = otherParticipant?.name
                       ?.split(" ")
                       .map((n: string) => n[0])
                       .join("")
                       .toUpperCase()
                       .slice(0, 2) || "?";
-                    return (
-                      <Avatar className="h-9 w-9 ring-2 ring-primary/20">
-                        <AvatarImage src={participant?.profilePhoto} />
-                        <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold">
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
-                    );
-                  })()}
-                  <CardTitle className="text-lg font-semibold">
-                    {selectedConversation.name ||
-                      selectedConversation.participants
-                        ?.map((p) => p?.name)
-                        .filter(Boolean)
-                        .join(", ")}
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-y-auto p-6 space-y-3 bg-muted/20">
-                {selectedConversation.messages?.map((message, index) => {
-                  const isSent = message.senderId === (selectedConversation as any).currentAccountId;
-                  const showAvatar =
-                    index === 0 ||
-                    selectedConversation.messages?.[index - 1]?.senderId !== message.senderId;
+                    const isSelected = selectedConversationId === conv._id.toString();
+                    const hasUnread = conv.unreadCount > 0;
 
-                  return (
-                    <div
-                      key={message._id}
-                      className={cn(
-                        "flex gap-2.5 items-end",
-                        isSent ? "flex-row-reverse" : ""
-                      )}
-                    >
-                      {!isSent && showAvatar ? (
-                        <Avatar className="h-7 w-7 mb-5">
-                          <AvatarImage src={message.senderPhoto} />
-                          <AvatarFallback className="bg-primary/15 text-primary text-[10px] font-semibold">
-                            {message.senderName?.[0]?.toUpperCase() || "?"}
-                          </AvatarFallback>
-                        </Avatar>
-                      ) : !isSent ? (
-                        <div className="w-7" />
-                      ) : null}
-                      <div
+                    return (
+                      <button
+                        key={conv._id}
+                        onClick={() => handleSelectConversation(conv._id.toString())}
                         className={cn(
-                          "max-w-[70%] px-4 py-2.5 transition-colors",
-                          isSent
-                            ? "bg-primary/10 text-foreground rounded-2xl rounded-br-md"
-                            : "bg-muted text-foreground rounded-2xl rounded-bl-md"
+                          "w-full p-4 text-left transition-all duration-200 border-b border-border/30 last:border-b-0",
+                          isSelected
+                            ? "bg-primary/8 border-l-[3px] border-l-primary"
+                            : "hover:bg-muted/40"
                         )}
                       >
-                        {!isSent && showAvatar && (
-                          <p className="text-xs font-semibold text-primary/70 mb-0.5">
-                            {message.senderName}
-                          </p>
-                        )}
-                        <p className="text-sm leading-relaxed">{message.content}</p>
-                        <p className={cn(
-                          "text-[10px] mt-1",
-                          isSent ? "text-primary/50 text-right" : "text-muted-foreground/60"
-                        )}>
-                          {new Date(message.createdAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                      </div>
+                        <div className="flex items-center gap-3">
+                          <div className="relative shrink-0">
+                            <Avatar className={cn(
+                              "h-11 w-11 ring-2 transition-all",
+                              isSelected ? "ring-primary/30" : "ring-transparent"
+                            )}>
+                              <AvatarImage src={otherParticipant?.profilePhoto} />
+                              <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-xs font-semibold">
+                                {initials}
+                              </AvatarFallback>
+                            </Avatar>
+                            {hasUnread && (
+                              <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-primary ring-2 ring-white dark:ring-card" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-center gap-2">
+                              <p className={cn(
+                                "truncate font-heading",
+                                hasUnread ? "font-semibold text-foreground" : "font-medium text-foreground/90"
+                              )}>
+                                {conv.name || otherParticipant?.name || "Unknown"}
+                              </p>
+                              {hasUnread && (
+                                <span className="bg-primary text-primary-foreground text-[10px] font-bold min-w-[20px] h-5 flex items-center justify-center px-1.5 rounded-full shrink-0">
+                                  {conv.unreadCount}
+                                </span>
+                              )}
+                            </div>
+                            {conv.lastMessage && (
+                              <p className={cn(
+                                "text-sm truncate mt-0.5",
+                                hasUnread ? "text-foreground/70 font-medium" : "text-muted-foreground"
+                              )}>
+                                {conv.lastMessage.content}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                    <div className="p-4 rounded-full bg-muted/60 mb-4">
+                      <Inbox className="h-8 w-8 text-muted-foreground/50" />
                     </div>
-                  );
-                })}
-                <div ref={messagesEndRef} />
-              </CardContent>
-              {typingUsers.length > 0 && (
-                <div className="px-6 py-1.5 text-xs text-muted-foreground animate-pulse">
-                  {typingUsers.map((u: any) => u?.name).filter(Boolean).join(", ")}{" "}
-                  {typingUsers.length === 1 ? "is" : "are"} typing...
-                </div>
-              )}
-              <form
-                onSubmit={handleSendMessage}
-                className="p-4 border-t border-border/50 flex gap-2 bg-card"
-              >
-                <Input
-                  value={newMessage}
-                  onChange={(e) => {
-                    setNewMessage(e.target.value);
-                    if (e.target.value.trim()) handleTyping();
-                  }}
-                  placeholder="Type a message..."
-                  disabled={isSending}
-                  className="rounded-full border-border/50 bg-muted/30 focus-visible:ring-primary/30 px-4"
-                />
-                <Button
-                  type="submit"
-                  size="icon"
-                  disabled={isSending || !newMessage.trim()}
-                  className="rounded-full h-10 w-10 shrink-0 transition-all duration-200 hover:scale-105 disabled:opacity-40"
-                >
-                  <Send className="h-4 w-4" />
-                  <span className="sr-only">Send message</span>
-                </Button>
-              </form>
-            </>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
-              <div className="p-5 rounded-full bg-primary/5 mb-5">
-                <MessageCircle className="h-12 w-12 text-primary/30" />
+                    <p className="font-heading font-semibold text-muted-foreground mb-1">No messages yet</p>
+                    <p className="text-sm text-muted-foreground/70">
+                      Visit a profile and send a message to get started
+                    </p>
+                  </div>
+                )}
               </div>
-              <h3 className="text-lg font-semibold text-foreground/80 mb-2">
-                Select a conversation
-              </h3>
-              <p className="text-sm text-muted-foreground max-w-[280px]">
-                Choose a conversation from the list to start messaging, or visit someone&apos;s profile to start a new one.
-              </p>
-            </div>
-          )}
-        </Card>
-      </div>
-    </div>
+            </CardContent>
+          </Card>
+
+          {/* Message Thread */}
+          <Card className="md:col-span-2 flex flex-col overflow-hidden border-0 shadow-sm rounded-2xl bg-white dark:bg-card">
+            {selectedConversation ? (
+              <>
+                <CardHeader className="pb-3 border-b border-border/40 shrink-0">
+                  <div className="flex items-center gap-3">
+                    {(() => {
+                      const participant = selectedConversation.participants?.find(p => p !== null);
+                      const initials = participant?.name
+                        ?.split(" ")
+                        .map((n: string) => n[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2) || "?";
+                      return (
+                        <Avatar className="h-9 w-9 ring-2 ring-primary/20 shrink-0">
+                          <AvatarImage src={participant?.profilePhoto} />
+                          <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-xs font-semibold">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                      );
+                    })()}
+                    <CardTitle className="text-base font-heading font-semibold">
+                      {selectedConversation.name ||
+                        selectedConversation.participants
+                          ?.map((p) => p?.name)
+                          .filter(Boolean)
+                          .join(", ")}
+                    </CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1 overflow-y-auto p-5 space-y-3 bg-muted/20">
+                  {selectedConversation.messages?.map((message, index) => {
+                    const isSent = message.senderId === (selectedConversation as any).currentAccountId;
+                    const showAvatar =
+                      index === 0 ||
+                      selectedConversation.messages?.[index - 1]?.senderId !== message.senderId;
+
+                    return (
+                      <div
+                        key={message._id}
+                        className={cn(
+                          "flex gap-2.5 items-end",
+                          isSent ? "flex-row-reverse" : ""
+                        )}
+                      >
+                        {!isSent && showAvatar ? (
+                          <Avatar className="h-7 w-7 mb-5 shrink-0">
+                            <AvatarImage src={message.senderPhoto} />
+                            <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-[10px] font-semibold">
+                              {message.senderName?.[0]?.toUpperCase() || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : !isSent ? (
+                          <div className="w-7 shrink-0" />
+                        ) : null}
+                        <div
+                          className={cn(
+                            "max-w-[70%] px-4 py-2.5 transition-colors",
+                            isSent
+                              ? "bg-primary text-primary-foreground rounded-2xl rounded-br-md"
+                              : "bg-muted text-foreground rounded-2xl rounded-bl-md"
+                          )}
+                        >
+                          {!isSent && showAvatar && (
+                            <p className={cn(
+                              "text-xs font-semibold mb-0.5",
+                              isSent ? "text-primary-foreground/70" : "text-primary/70"
+                            )}>
+                              {message.senderName}
+                            </p>
+                          )}
+                          <p className="text-sm leading-relaxed">{message.content}</p>
+                          <p className={cn(
+                            "text-[10px] mt-1",
+                            isSent ? "text-primary-foreground/60 text-right" : "text-muted-foreground/60"
+                          )}>
+                            {new Date(message.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </CardContent>
+                {typingUsers.length > 0 && (
+                  <div className="px-5 py-1.5 text-xs text-muted-foreground animate-pulse shrink-0">
+                    {typingUsers.map((u: any) => u?.name).filter(Boolean).join(", ")}{" "}
+                    {typingUsers.length === 1 ? "is" : "are"} typing...
+                  </div>
+                )}
+                <form
+                  onSubmit={handleSendMessage}
+                  className="p-4 border-t border-border/40 flex gap-2 bg-card shrink-0"
+                >
+                  <Input
+                    value={newMessage}
+                    onChange={(e) => {
+                      setNewMessage(e.target.value);
+                      if (e.target.value.trim()) handleTyping();
+                    }}
+                    placeholder="Type a message..."
+                    disabled={isSending}
+                    className="rounded-full border-border/50 bg-muted/30 focus-visible:ring-primary/30 px-4"
+                  />
+                  <Button
+                    type="submit"
+                    size="icon"
+                    disabled={isSending || !newMessage.trim()}
+                    className="rounded-full h-10 w-10 shrink-0 transition-all duration-200 hover:scale-105 disabled:opacity-40"
+                  >
+                    <Send className="h-4 w-4" />
+                    <span className="sr-only">Send message</span>
+                  </Button>
+                </form>
+              </>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
+                <div className="p-5 rounded-full bg-primary/5 mb-5">
+                  <MessageCircle className="h-12 w-12 text-primary/30" />
+                </div>
+                <h3 className="text-lg font-heading font-semibold text-foreground/80 mb-2">
+                  Select a conversation
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-[280px]">
+                  Choose a conversation from the list to start messaging, or visit someone&apos;s profile to start a new one.
+                </p>
+              </div>
+            )}
+          </Card>
+        </div>
+      </ContentPanel>
+    </>
   );
 }
 
