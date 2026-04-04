@@ -264,7 +264,8 @@ export default defineSchema({
   })
     .index("by_account", ["accountId"])
     .index("by_account_and_read", ["accountId", "isRead"])
-    .index("by_account_and_created", ["accountId", "createdAt"]),
+    .index("by_account_and_created", ["accountId", "createdAt"])
+    .index("by_created", ["createdAt"]),
 
   // Support requests - when families need help
   supportRequests: defineTable({

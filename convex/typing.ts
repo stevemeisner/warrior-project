@@ -147,7 +147,7 @@ export const cleanupExpired = internalMutation({
 
     const expired = await ctx.db
       .query("typingIndicators")
-      .filter((q) => q.lt(q.field("expiresAt"), now))
+      .withIndex("by_expires", (q) => q.lt("expiresAt", now))
       .collect();
 
     for (const indicator of expired) {

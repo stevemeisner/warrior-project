@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { Id, Doc } from "./_generated/dataModel";
 import { auth } from "./auth";
 import { statusValues, visibilitySettings } from "./schema";
 
@@ -162,16 +163,21 @@ export const getStatusHistory = query({
       ? statusUpdates
       : statusUpdates.filter((u) => u.visibility === "public");
 
-    // Get updater info
-    const updatesWithInfo = await Promise.all(
-      visibleUpdates.map(async (update) => {
-        const updater = await ctx.db.get(update.updatedBy);
-        return {
-          ...update,
-          updatedByName: updater?.name || "Unknown",
-        };
-      })
-    );
+    // Get updater info (dedup lookups)
+    const uniqueUpdaterIds = [...new Set(visibleUpdates.map((u) => u.updatedBy))];
+    const updaterMap = new Map<string, Doc<"accounts">>();
+    for (const id of uniqueUpdaterIds) {
+      const u = await ctx.db.get(id);
+      if (u) updaterMap.set(id, u);
+    }
+
+    const updatesWithInfo = visibleUpdates.map((update) => {
+      const updater = updaterMap.get(update.updatedBy);
+      return {
+        ...update,
+        updatedByName: updater?.name || "Unknown",
+      };
+    });
 
     return updatesWithInfo;
   },
@@ -194,36 +200,59 @@ export const getRecentUpdates = query({
     }
 
     // Get recent public status updates
+    // Take a larger batch to ensure enough public results after filtering
+    const desiredCount = args.limit || 20;
     const recentUpdates = await ctx.db
       .query("statusUpdates")
       .withIndex("by_created")
       .order("desc")
-      .take(100);
+      .take(desiredCount * 10);
 
-    // Filter by visibility and enrich with warrior/account data
-    const enrichedUpdates = await Promise.all(
-      recentUpdates
-        .filter((u) => u.visibility === "public")
-        .slice(0, args.limit || 20)
-        .map(async (update) => {
-          const warrior = await ctx.db.get(update.warriorId);
-          const updater = await ctx.db.get(update.updatedBy);
-          const account = warrior ? await ctx.db.get(warrior.accountId) : null;
+    // Filter by visibility
+    const publicUpdates = recentUpdates
+      .filter((u) => u.visibility === "public")
+      .slice(0, desiredCount);
 
-          return {
-            ...update,
-            warrior: warrior
-              ? {
-                  _id: warrior._id,
-                  name: warrior.name,
-                  profilePhoto: warrior.profilePhoto,
-                }
-              : null,
-            updatedByName: updater?.name || "Unknown",
-            accountName: account?.name || "Unknown",
-          };
-        })
-    );
+    // Dedup all entity lookups
+    const warriorIds = [...new Set(publicUpdates.map((u) => u.warriorId))];
+    const updaterIds = [...new Set(publicUpdates.map((u) => u.updatedBy))];
+
+    const warriorMap = new Map<string, Doc<"warriors">>();
+    for (const id of warriorIds) {
+      const w = await ctx.db.get(id);
+      if (w) warriorMap.set(id, w);
+    }
+
+    // Collect all account IDs (updaters + warrior owners) and fetch once
+    const allAccountIds = new Set<Id<"accounts">>(updaterIds);
+    for (const w of warriorMap.values()) {
+      allAccountIds.add(w.accountId);
+    }
+
+    const accountMap = new Map<string, Doc<"accounts">>();
+    for (const id of allAccountIds) {
+      const a = await ctx.db.get(id);
+      if (a) accountMap.set(id, a);
+    }
+
+    const enrichedUpdates = publicUpdates.map((update) => {
+      const warrior = warriorMap.get(update.warriorId);
+      const updater = accountMap.get(update.updatedBy);
+      const ownerAccount = warrior ? accountMap.get(warrior.accountId) : null;
+
+      return {
+        ...update,
+        warrior: warrior
+          ? {
+              _id: warrior._id,
+              name: warrior.name,
+              profilePhoto: warrior.profilePhoto,
+            }
+          : null,
+        updatedByName: updater?.name || "Unknown",
+        accountName: ownerAccount?.name || "Unknown",
+      };
+    });
 
     return enrichedUpdates.filter((u) => u.warrior !== null);
   },

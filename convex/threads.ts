@@ -198,6 +198,10 @@ export const updateThread = mutation({
       throw new Error("Not authorized to update this thread");
     }
 
+    if (thread.isLocked) {
+      throw new Error("Cannot edit a locked thread");
+    }
+
     if (args.title !== undefined && args.title.length > 200) {
       throw new Error("Title must be 200 characters or less");
     }
@@ -246,13 +250,24 @@ export const deleteThread = mutation({
       throw new Error("Not authorized to delete this thread");
     }
 
-    // Delete all comments
+    if (thread.isLocked) {
+      throw new Error("Cannot delete a locked thread");
+    }
+
+    // Delete all comments and their likes
     const comments = await ctx.db
       .query("comments")
       .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
       .collect();
 
     for (const comment of comments) {
+      const likes = await ctx.db
+        .query("commentLikes")
+        .withIndex("by_comment", (q) => q.eq("commentId", comment._id))
+        .collect();
+      for (const like of likes) {
+        await ctx.db.delete(like._id);
+      }
       await ctx.db.delete(comment._id);
     }
 
@@ -455,7 +470,7 @@ export const deleteComment = mutation({
 
     const thread = await ctx.db.get(comment.threadId);
 
-    // Delete child comments recursively
+    // Delete child comments recursively (including their likes)
     const deleteChildComments = async (parentId: typeof args.commentId) => {
       const children = await ctx.db
         .query("comments")
@@ -464,11 +479,28 @@ export const deleteComment = mutation({
 
       for (const child of children) {
         await deleteChildComments(child._id);
+        const childLikes = await ctx.db
+          .query("commentLikes")
+          .withIndex("by_comment", (q) => q.eq("commentId", child._id))
+          .collect();
+        for (const like of childLikes) {
+          await ctx.db.delete(like._id);
+        }
         await ctx.db.delete(child._id);
       }
     };
 
     await deleteChildComments(args.commentId);
+
+    // Delete this comment's likes
+    const likes = await ctx.db
+      .query("commentLikes")
+      .withIndex("by_comment", (q) => q.eq("commentId", args.commentId))
+      .collect();
+    for (const like of likes) {
+      await ctx.db.delete(like._id);
+    }
+
     await ctx.db.delete(args.commentId);
 
     // Update thread comment count

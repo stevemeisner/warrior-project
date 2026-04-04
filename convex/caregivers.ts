@@ -170,11 +170,19 @@ export const inviteCaregiver = mutation({
       throw new Error("Only family accounts can invite caregivers");
     }
 
-    // Check if already invited
+    // Check if already invited (only block pending or accepted — allow re-inviting declined)
     const existingInvite = await ctx.db
       .query("caregivers")
       .withIndex("by_invite_email", (q) => q.eq("inviteEmail", args.email))
-      .filter((q) => q.eq(q.field("accountId"), account._id))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("accountId"), account._id),
+          q.or(
+            q.eq(q.field("inviteStatus"), "pending"),
+            q.eq(q.field("inviteStatus"), "accepted")
+          )
+        )
+      )
       .first();
 
     if (existingInvite) {

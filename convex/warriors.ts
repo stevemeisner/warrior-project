@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { QueryCtx } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
+import { Id, Doc } from "./_generated/dataModel";
 import { auth } from "./auth";
 import { statusValues, visibilitySettings } from "./schema";
 
@@ -338,6 +338,16 @@ export const deleteWarrior = mutation({
       await ctx.db.delete(update._id);
     }
 
+    // Clear dangling warriorId references on support requests
+    const supportRequests = await ctx.db
+      .query("supportRequests")
+      .withIndex("by_warrior", (q) => q.eq("warriorId", args.warriorId))
+      .collect();
+
+    for (const sr of supportRequests) {
+      await ctx.db.patch(sr._id, { warriorId: undefined });
+    }
+
     // Delete the warrior
     await ctx.db.delete(args.warriorId);
 
@@ -421,24 +431,30 @@ export const getPublicWarriors = query({
       filtered = warriors.filter((w) => w.currentStatus === args.status);
     }
 
-    // Get account info for each warrior
-    const warriorsWithAccounts = await Promise.all(
-      filtered.slice(0, limit).map(async (warrior) => {
-        const account = await ctx.db.get(warrior.accountId);
-        return {
-          ...warrior,
-          account: account
-            ? {
-                _id: account._id,
-                name: account.name,
-                location: account.privacySettings?.showLocation
-                  ? account.location
-                  : undefined,
-              }
-            : null,
-        };
-      })
-    );
+    // Get account info for each warrior (dedup account lookups)
+    const sliced = filtered.slice(0, limit);
+    const uniqueAccountIds = [...new Set(sliced.map((w) => w.accountId))];
+    const accountMap = new Map<string, Doc<"accounts">>();
+    for (const id of uniqueAccountIds) {
+      const a = await ctx.db.get(id);
+      if (a) accountMap.set(id, a);
+    }
+
+    const warriorsWithAccounts = sliced.map((warrior) => {
+      const acct = accountMap.get(warrior.accountId);
+      return {
+        ...warrior,
+        account: acct
+          ? {
+              _id: acct._id,
+              name: acct.name,
+              location: acct.privacySettings?.showLocation
+                ? acct.location
+                : undefined,
+            }
+          : null,
+      };
+    });
 
     return warriorsWithAccounts;
   },

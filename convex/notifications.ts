@@ -236,7 +236,7 @@ export const clearOldNotifications = internalMutation({
 
     const oldNotifications = await ctx.db
       .query("notifications")
-      .filter((q) => q.lt(q.field("createdAt"), cutoff))
+      .withIndex("by_created", (q) => q.lt("createdAt", cutoff))
       .collect();
 
     let deleted = 0;

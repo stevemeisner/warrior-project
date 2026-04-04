@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { Id, Doc } from "./_generated/dataModel";
 import { auth } from "./auth";
 import { isBlocked } from "./blockedUsers";
 import { checkRateLimit } from "./rateLimit";
@@ -47,21 +48,19 @@ export const getMyConversations = query({
       .filter((conv) => conv.participants.includes(account._id))
       .slice(0, limit);
 
+    // Dedup participant lookups across all conversations
+    const allParticipantIds = [...new Set(myConversations.flatMap((c) => c.participants))];
+    const participantMap = new Map<string, { _id: Id<"accounts">; name: string; profilePhoto?: string }>();
+    for (const pId of allParticipantIds) {
+      const p = await ctx.db.get(pId);
+      if (p) participantMap.set(pId, { _id: p._id, name: p.name, profilePhoto: p.profilePhoto });
+    }
+
     // Enrich with participant info and last message
     const enrichedConversations = await Promise.all(
       myConversations.map(async (conv) => {
-        const participants = await Promise.all(
-          conv.participants.map(async (pId) => {
-            const participant = await ctx.db.get(pId);
-            return participant
-              ? {
-                  _id: participant._id,
-                  name: participant.name,
-                  profilePhoto: participant.profilePhoto,
-                }
-              : null;
-          })
-        );
+        const participants = conv.participants
+          .map((pId) => participantMap.get(pId) ?? null);
 
         // Get last message
         const lastMessage = await ctx.db
@@ -183,17 +182,22 @@ export const getConversation = query({
     // Reverse to get chronological order for display
     messages.reverse();
 
-    // Enrich with sender info
-    const enrichedMessages = await Promise.all(
-      messages.map(async (msg) => {
-        const sender = await ctx.db.get(msg.senderId);
-        return {
-          ...msg,
-          senderName: sender?.name || "Unknown",
-          senderPhoto: sender?.profilePhoto,
-        };
-      })
-    );
+    // Enrich with sender info (dedup sender lookups)
+    const uniqueSenderIds = [...new Set(messages.map((m) => m.senderId))];
+    const senderMap = new Map<string, Doc<"accounts">>();
+    for (const id of uniqueSenderIds) {
+      const s = await ctx.db.get(id);
+      if (s) senderMap.set(id, s);
+    }
+
+    const enrichedMessages = messages.map((msg) => {
+      const sender = senderMap.get(msg.senderId);
+      return {
+        ...msg,
+        senderName: sender?.name || "Unknown",
+        senderPhoto: sender?.profilePhoto,
+      };
+    });
 
     // Get participant info
     const participants = await Promise.all(
@@ -272,13 +276,15 @@ export const startConversation = mutation({
       ? [...allParticipants].sort().join("_")
       : undefined;
 
+    const now = Date.now();
     const conversationId = await ctx.db.insert("conversations", {
       participants: allParticipants,
       type: conversationType,
       name: conversationType === "group" ? args.name : undefined,
       dmKey,
       caregiverAccess: args.caregiverAccess ?? true,
-      createdAt: Date.now(),
+      lastMessageAt: now,
+      createdAt: now,
     });
 
     return conversationId;
@@ -375,25 +381,51 @@ export const sendMessage = mutation({
       lastMessageAt: now,
     });
 
-    // Increment unread counts for other participants
-    for (const participantId of conversation.participants) {
-      if (participantId !== account._id) {
-        const existing = await ctx.db
-          .query("unreadCounts")
-          .withIndex("by_conversation_and_account", (q) =>
-            q.eq("conversationId", args.conversationId).eq("accountId", participantId)
-          )
-          .first();
+    // Collect all account IDs who should get unread count bumps:
+    // participants + caregivers with message access
+    const recipientIds = new Set<Id<"accounts">>();
+    for (const pid of conversation.participants) {
+      if (pid !== account._id) recipientIds.add(pid);
+    }
 
-        if (existing) {
-          await ctx.db.patch(existing._id, { count: existing.count + 1 });
-        } else {
-          await ctx.db.insert("unreadCounts", {
-            conversationId: args.conversationId,
-            accountId: participantId,
-            count: 1,
-          });
+    if (conversation.caregiverAccess) {
+      for (const participantId of conversation.participants) {
+        const caregiverRelations = await ctx.db
+          .query("caregivers")
+          .withIndex("by_account", (q) => q.eq("accountId", participantId))
+          .filter((q) => q.eq(q.field("inviteStatus"), "accepted"))
+          .collect();
+
+        for (const rel of caregiverRelations) {
+          if (
+            rel.caregiverAccountId !== account._id &&
+            (rel.permissions === "canMessage" ||
+              rel.permissions === "canUpdate" ||
+              rel.permissions === "fullAccess")
+          ) {
+            recipientIds.add(rel.caregiverAccountId);
+          }
         }
+      }
+    }
+
+    // Increment unread counts for all recipients
+    for (const recipientId of recipientIds) {
+      const existing = await ctx.db
+        .query("unreadCounts")
+        .withIndex("by_conversation_and_account", (q) =>
+          q.eq("conversationId", args.conversationId).eq("accountId", recipientId)
+        )
+        .first();
+
+      if (existing) {
+        await ctx.db.patch(existing._id, { count: existing.count + 1 });
+      } else {
+        await ctx.db.insert("unreadCounts", {
+          conversationId: args.conversationId,
+          accountId: recipientId,
+          count: 1,
+        });
       }
     }
 
