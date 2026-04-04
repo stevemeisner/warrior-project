@@ -5,11 +5,12 @@ import { api } from "../../../convex/_generated/api";
 import { WarriorList } from "@/components/warrior-card";
 import { DashboardSkeleton } from "@/components/skeleton-loaders";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { WarriorStatus } from "@/components/status-selector";
+import { WarriorStatus, StatusBadge } from "@/components/status-selector";
+import { statusIconMap } from "@/components/icons/status-icons";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { useRouter } from "next/navigation";
+import { GradientHeader, ContentPanel } from "@/components/gradient-header";
 import {
   MapPin,
   MessageCircle,
@@ -28,14 +29,17 @@ function getGreeting(): string {
   return "Good evening";
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  thriving: "bg-emerald-400",
-  stable: "bg-blue-400",
-  struggling: "bg-gray-400",
-  hospitalized: "bg-red-400",
-  needsSupport: "bg-purple-400",
-  feather: "bg-amber-300",
-};
+function formatTimeAgo(timestamp: number): string {
+  const now = Date.now();
+  const diff = now - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 
 function DashboardContent() {
   const router = useRouter();
@@ -78,243 +82,172 @@ function DashboardContent() {
 
   const isFamily = account.role === "family";
 
+  const statItems = [
+    {
+      label: "Warriors",
+      value: warriors === undefined ? null : warriors.length,
+      icon: Shield,
+      color: "text-primary",
+    },
+    {
+      label: "Messages",
+      value: unreadMessages === undefined ? null : unreadMessages,
+      icon: MessageCircle,
+      color: "text-violet-500",
+    },
+    {
+      label: "Notifications",
+      value: notifications === undefined ? null : notifications,
+      icon: Bell,
+      color: "text-amber-500",
+    },
+    {
+      label: "Updates",
+      value: recentUpdates === undefined ? null : recentUpdates.length,
+      icon: Activity,
+      color: "text-emerald-500",
+    },
+    {
+      label: "Support",
+      value: supportCount === undefined ? null : supportCount,
+      icon: HeartHandshake,
+      color: "text-rose-500",
+    },
+  ];
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Greeting Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">
-            {getGreeting()}, {account.name}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {isFamily
-              ? "Here\u2019s how your warriors are doing today"
-              : "Here are the latest updates from families you care for"}
-          </p>
+    <>
+      {/* Gradient Header with Greeting */}
+      <GradientHeader tall>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="font-heading text-2xl md:text-3xl font-bold text-white">
+              {getGreeting()}, {account.name}
+            </h1>
+            <p className="text-white/80 text-sm mt-1">
+              {isFamily
+                ? "Here\u2019s how your warriors are doing today"
+                : "Here are the latest updates from families you care for"}
+            </p>
+          </div>
+          {isFamily && (
+            <Link href="/profile/warrior/new">
+              <Button variant="secondary" size="sm">
+                Add Warrior
+              </Button>
+            </Link>
+          )}
         </div>
-        {isFamily && (
-          <Link href="/profile/warrior/new">
-            <Button>Add Warrior</Button>
-          </Link>
-        )}
-      </div>
+      </GradientHeader>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-        {/* Warriors */}
-        <Card className="border-l-4 border-l-primary">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <Shield className="h-5 w-5 text-primary" />
-              </div>
+      <ContentPanel>
+        {/* Quick Stats Strip */}
+        <div className="flex overflow-x-auto gap-3 pb-2 -mt-1 md:flex-row md:overflow-visible mb-6">
+          {statItems.map((item) => (
+            <div
+              key={item.label}
+              className="flex-shrink-0 bg-white rounded-xl px-4 py-3 shadow-sm min-w-[120px] flex items-center gap-3"
+            >
+              <item.icon className={`size-5 ${item.color} shrink-0`} />
               <div>
-                {warriors === undefined ? (
-                  <div className="h-8 w-12 bg-muted animate-pulse rounded" />
+                {item.value === null ? (
+                  <div className="h-7 w-10 bg-muted animate-pulse rounded" />
                 ) : (
-                  <div className="text-2xl font-bold">{warriors.length}</div>
+                  <div className="font-heading text-xl font-bold leading-tight">
+                    {item.value}
+                  </div>
                 )}
-                <p className="text-sm text-muted-foreground">Warriors</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Messages */}
-        <Card className="border-l-4 border-l-violet-500">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-500/10">
-                <MessageCircle className="h-5 w-5 text-violet-500" />
-              </div>
-              <div>
-                {unreadMessages === undefined ? (
-                  <div className="h-8 w-12 bg-muted animate-pulse rounded" />
-                ) : (
-                  <div className="text-2xl font-bold">{unreadMessages}</div>
-                )}
-                <p className="text-sm text-muted-foreground">Unread Messages</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Notifications */}
-        <Card className="border-l-4 border-l-amber-500">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
-                <Bell className="h-5 w-5 text-amber-500" />
-              </div>
-              <div>
-                {notifications === undefined ? (
-                  <div className="h-8 w-12 bg-muted animate-pulse rounded" />
-                ) : (
-                  <div className="text-2xl font-bold">{notifications}</div>
-                )}
-                <p className="text-sm text-muted-foreground">Notifications</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Updates */}
-        <Card className="border-l-4 border-l-emerald-500">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
-                <Activity className="h-5 w-5 text-emerald-500" />
-              </div>
-              <div>
-                {recentUpdates === undefined ? (
-                  <div className="h-8 w-12 bg-muted animate-pulse rounded" />
-                ) : (
-                  <div className="text-2xl font-bold">{recentUpdates.length}</div>
-                )}
-                <p className="text-sm text-muted-foreground">Recent Updates</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Support Requests */}
-        <Card className="border-l-4 border-l-rose-500">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10">
-                <HeartHandshake className="h-5 w-5 text-rose-500" />
-              </div>
-              <div>
-                {supportCount === undefined ? (
-                  <div className="h-8 w-12 bg-muted animate-pulse rounded" />
-                ) : (
-                  <div className="text-2xl font-bold">{supportCount}</div>
-                )}
-                <p className="text-sm text-muted-foreground">Support Requests</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Warriors Section */}
-      {isFamily && (
-        <section className="mb-8">
-          <h2 className="text-2xl font-semibold mb-4">Your Warriors</h2>
-          <WarriorList
-            warriors={(warriors || []).map((w) => ({
-              ...w,
-              _id: w._id.toString(),
-            }))}
-            onStatusChange={handleStatusChange}
-            onWarriorClick={(warrior) => router.push(`/profile/warrior/${warrior._id}`)}
-            canEdit
-          />
-        </section>
-      )}
-
-      {/* Quick Navigation */}
-      <section className="mb-8">
-        <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Link href="/map">
-            <Card className="card-hover cursor-pointer">
-              <CardContent className="pt-6 text-center">
-                <div className="flex h-12 w-12 mx-auto mb-3 items-center justify-center rounded-full bg-blue-500/10">
-                  <MapPin className="h-6 w-6 text-blue-500" />
-                </div>
-                <p className="font-medium">Map</p>
-                <p className="text-sm text-muted-foreground">Find warriors nearby</p>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href="/messages">
-            <Card className="card-hover cursor-pointer">
-              <CardContent className="pt-6 text-center">
-                <div className="flex h-12 w-12 mx-auto mb-3 items-center justify-center rounded-full bg-violet-500/10">
-                  <MessageCircle className="h-6 w-6 text-violet-500" />
-                </div>
-                <p className="font-medium">Messages</p>
-                <p className="text-sm text-muted-foreground">
-                  {unreadMessages ? `${unreadMessages} unread` : "Start chatting"}
+                <p className="text-xs text-muted-foreground whitespace-nowrap">
+                  {item.label}
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="flex overflow-x-auto gap-3 pb-2 mb-6 md:overflow-visible">
+          <Link href="/map" className="flex-shrink-0">
+            <div className="bg-white rounded-xl px-4 py-3 shadow-sm flex items-center gap-2 hover:shadow-md transition-shadow">
+              <MapPin className="size-4 text-blue-500" />
+              <span className="text-sm font-medium whitespace-nowrap">Map</span>
+            </div>
           </Link>
-          <Link href="/community">
-            <Card className="card-hover cursor-pointer">
-              <CardContent className="pt-6 text-center">
-                <div className="flex h-12 w-12 mx-auto mb-3 items-center justify-center rounded-full bg-emerald-500/10">
-                  <Users className="h-6 w-6 text-emerald-500" />
-                </div>
-                <p className="font-medium">Community</p>
-                <p className="text-sm text-muted-foreground">Join discussions</p>
-              </CardContent>
-            </Card>
+          <Link href="/messages" className="flex-shrink-0">
+            <div className="bg-white rounded-xl px-4 py-3 shadow-sm flex items-center gap-2 hover:shadow-md transition-shadow">
+              <MessageCircle className="size-4 text-violet-500" />
+              <span className="text-sm font-medium whitespace-nowrap">
+                Messages{unreadMessages ? ` (${unreadMessages})` : ""}
+              </span>
+            </div>
           </Link>
-          <Link href="/support">
-            <Card className="card-hover cursor-pointer">
-              <CardContent className="pt-6 text-center">
-                <div className="flex h-12 w-12 mx-auto mb-3 items-center justify-center rounded-full bg-rose-500/10">
-                  <HeartHandshake className="h-6 w-6 text-rose-500" />
-                </div>
-                <p className="font-medium">Support</p>
-                <p className="text-sm text-muted-foreground">
-                  {isFamily ? "Ask for help" : "Offer your help"}
-                </p>
-              </CardContent>
-            </Card>
+          <Link href="/community" className="flex-shrink-0">
+            <div className="bg-white rounded-xl px-4 py-3 shadow-sm flex items-center gap-2 hover:shadow-md transition-shadow">
+              <Users className="size-4 text-emerald-500" />
+              <span className="text-sm font-medium whitespace-nowrap">Community</span>
+            </div>
+          </Link>
+          <Link href="/support" className="flex-shrink-0">
+            <div className="bg-white rounded-xl px-4 py-3 shadow-sm flex items-center gap-2 hover:shadow-md transition-shadow">
+              <HeartHandshake className="size-4 text-rose-500" />
+              <span className="text-sm font-medium whitespace-nowrap">
+                {isFamily ? "Get Support" : "Offer Help"}
+              </span>
+            </div>
           </Link>
         </div>
-      </section>
 
-      {/* Recent Activity */}
-      <section>
-        <h2 className="text-2xl font-semibold mb-4">Recent Activity</h2>
-        <Card>
-          <CardContent className="pt-6">
+        {/* Desktop two-column layout for updates + warriors */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Recent Updates - Timeline */}
+          <section>
+            <h2 className="section-label mb-4">Recent Updates</h2>
             {recentUpdates && recentUpdates.length > 0 ? (
-              <ul className="space-y-1">
-                {recentUpdates.map((update) => (
-                  <li
-                    key={update._id}
-                    className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50"
-                  >
-                    {/* Colored timeline dot */}
-                    <div className="flex flex-col items-center pt-1.5">
-                      <div
-                        className={`h-3 w-3 rounded-full ${STATUS_COLORS[update.status] || "bg-muted"}`}
-                      />
-                    </div>
-
-                    {/* Status emoji */}
-                    <span className="text-2xl shrink-0" aria-hidden="true">
-                      {update.status === "thriving" && "\ud83c\udf1f"}
-                      {update.status === "stable" && "\ud83d\udc99"}
-                      {update.status === "struggling" && "\ud83c\udf27\ufe0f"}
-                      {update.status === "hospitalized" && "\ud83c\udfe5"}
-                      {update.status === "needsSupport" && "\ud83d\udc9c"}
-                      {update.status === "feather" && "\ud83e\udeb6"}
-                    </span>
-
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm">
-                        <span className="font-medium">{update.warrior?.name}</span>
-                        {" is "}
-                        <span className="font-medium">{update.status}</span>
-                      </p>
-                      {update.context && (
-                        <p className="text-sm text-muted-foreground truncate">
-                          &quot;{update.context}&quot;
+              <div className="space-y-0">
+                {recentUpdates.map((update, index) => {
+                  const IconComponent =
+                    statusIconMap[update.status as keyof typeof statusIconMap];
+                  return (
+                    <div
+                      key={update._id}
+                      className={`flex items-start gap-3 py-3 ${
+                        index < recentUpdates.length - 1
+                          ? "border-b border-border"
+                          : ""
+                      }`}
+                    >
+                      <div className="icon-box">
+                        {IconComponent ? (
+                          <IconComponent className="size-5 text-primary" />
+                        ) : (
+                          <Activity className="size-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0 pt-0.5">
+                        <p className="text-sm">
+                          <span className="text-primary font-semibold">
+                            {update.warrior?.name}
+                          </span>
+                          {" is "}
+                          <StatusBadge
+                            status={update.status as WarriorStatus}
+                            size="sm"
+                          />
                         </p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        Updated by {update.updatedByName}
-                      </p>
+                        {update.context && (
+                          <p className="text-sm text-muted-foreground truncate mt-0.5">
+                            &quot;{update.context}&quot;
+                          </p>
+                        )}
+                        <p className="text-muted-foreground text-sm mt-0.5">
+                          {update.updatedByName} &middot;{" "}
+                          {formatTimeAgo(update._creationTime)}
+                        </p>
+                      </div>
                     </div>
-                  </li>
-                ))}
-              </ul>
+                  );
+                })}
+              </div>
             ) : (
               <div className="text-center py-12">
                 <Activity className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
@@ -326,10 +259,28 @@ function DashboardContent() {
                 </p>
               </div>
             )}
-          </CardContent>
-        </Card>
-      </section>
-    </div>
+          </section>
+
+          {/* Warriors Section */}
+          {isFamily && (
+            <section>
+              <h2 className="section-label mb-4">Your Warriors</h2>
+              <WarriorList
+                warriors={(warriors || []).map((w) => ({
+                  ...w,
+                  _id: w._id.toString(),
+                }))}
+                onStatusChange={handleStatusChange}
+                onWarriorClick={(warrior) =>
+                  router.push(`/profile/warrior/${warrior._id}`)
+                }
+                canEdit
+              />
+            </section>
+          )}
+        </div>
+      </ContentPanel>
+    </>
   );
 }
 
