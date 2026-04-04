@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { statusIconMap } from "@/components/icons/status-icons";
 
 export type WarriorStatus =
   | "thriving"
@@ -13,7 +14,6 @@ export type WarriorStatus =
 interface StatusOption {
   value: WarriorStatus;
   label: string;
-  emoji: string;
   description: string;
   colorClass: string;
 }
@@ -22,44 +22,38 @@ const statusOptions: StatusOption[] = [
   {
     value: "thriving",
     label: "Thriving",
-    emoji: "🌟",
     description: "Great day!",
-    colorClass: "bg-status-thriving",
+    colorClass: "text-status-thriving",
   },
   {
     value: "stable",
     label: "Stable",
-    emoji: "💙",
     description: "Normal day",
-    colorClass: "bg-status-stable",
+    colorClass: "text-status-stable",
   },
   {
     value: "struggling",
     label: "Struggling",
-    emoji: "🌧️",
     description: "Hard day",
-    colorClass: "bg-status-struggling",
+    colorClass: "text-status-struggling",
   },
   {
     value: "hospitalized",
     label: "Hospitalized",
-    emoji: "🏥",
     description: "In hospital",
-    colorClass: "bg-status-hospitalized",
+    colorClass: "text-status-hospitalized",
   },
   {
     value: "needsSupport",
     label: "Needs Support",
-    emoji: "💜",
     description: "Could use help",
-    colorClass: "bg-status-needs-support",
+    colorClass: "text-status-needs-support",
   },
   {
     value: "feather",
     label: "Feather",
-    emoji: "🪶",
     description: "Passed away",
-    colorClass: "bg-status-feather",
+    colorClass: "text-status-feather",
   },
 ];
 
@@ -77,27 +71,32 @@ export function StatusSelector({
   compact = false,
 }: StatusSelectorProps) {
   return (
-    <div className={cn("flex flex-wrap gap-2", compact ? "gap-1" : "gap-2")}>
-      {statusOptions.map((option) => (
-        <button
-          key={option.value}
-          onClick={() => onStatusChange(option.value)}
-          disabled={disabled}
-          aria-pressed={currentStatus === option.value}
-          className={cn(
-            "flex items-center gap-2 rounded-lg border-2 transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-            compact ? "px-2 py-1 text-sm" : "px-3 py-2",
-            currentStatus === option.value
-              ? "border-primary bg-primary/10"
-              : "border-transparent bg-muted hover:bg-muted/80",
-            disabled && "cursor-not-allowed opacity-50"
-          )}
-          title={option.description}
-        >
-          <span className="text-lg">{option.emoji}</span>
-          {!compact && <span>{option.label}</span>}
-        </button>
-      ))}
+    <div className={cn("flex flex-wrap", compact ? "gap-1.5" : "gap-2")}>
+      {statusOptions.map((option) => {
+        const Icon = statusIconMap[option.value];
+        return (
+          <button
+            key={option.value}
+            onClick={() => onStatusChange(option.value)}
+            disabled={disabled}
+            aria-pressed={currentStatus === option.value}
+            aria-label={`${option.label}: ${option.description}`}
+            className={cn(
+              "flex items-center gap-2 rounded-xl border-2 transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              compact ? "px-3 py-2 text-sm" : "px-4 py-3",
+              "min-h-[44px]",
+              currentStatus === option.value
+                ? "border-primary bg-primary/10"
+                : "border-transparent bg-muted hover:bg-muted/80",
+              disabled && "cursor-not-allowed opacity-50"
+            )}
+            title={option.description}
+          >
+            <Icon className={cn("size-5", option.colorClass)} />
+            {!compact && <span className="font-medium">{option.label}</span>}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -116,21 +115,32 @@ export function StatusBadge({
   const option = statusOptions.find((o) => o.value === status);
   if (!option) return null;
 
+  const Icon = statusIconMap[status];
+
   const sizeClasses = {
-    sm: "text-xs px-2 py-0.5",
-    md: "text-sm px-3 py-1",
-    lg: "text-base px-4 py-1.5",
+    sm: "text-xs px-2.5 py-1",
+    md: "text-sm px-3 py-1.5",
+    lg: "text-base px-4 py-2",
+  };
+
+  const iconSizes = {
+    sm: "size-3.5",
+    md: "size-4",
+    lg: "size-5",
   };
 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full text-white",
-        option.colorClass,
+        "inline-flex items-center gap-1.5 rounded-full font-medium",
         sizeClasses[size]
       )}
+      style={{
+        background: `linear-gradient(135deg, var(--status-${status === "needsSupport" ? "needs-support" : status}) / 0.1, var(--status-${status === "needsSupport" ? "needs-support" : status}) / 0.18)`,
+        color: `var(--status-${status === "needsSupport" ? "needs-support" : status})`,
+      }}
     >
-      <span aria-hidden="true">{option.emoji}</span>
+      <Icon className={iconSizes[size]} />
       {showLabel && <span>{option.label}</span>}
       {!showLabel && <span className="sr-only">{option.label}</span>}
     </span>
