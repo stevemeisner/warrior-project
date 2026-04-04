@@ -6,12 +6,13 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { WarriorList } from "@/components/warrior-card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
 import { WarriorStatus } from "@/components/status-selector";
 import { toast } from "sonner";
+import { GradientHeader, ContentPanel } from "@/components/gradient-header";
 
 function PublicProfileContent() {
   const params = useParams();
@@ -67,103 +68,120 @@ function PublicProfileContent() {
     );
   }
 
+  const initials = account.name?.[0]?.toUpperCase() ?? "?";
+
   return (
-    <div className="space-y-6">
-      <div className="mb-6">
-        <Link href="/map" className="text-primary hover:underline">
-          &larr; Back to Map
-        </Link>
-      </div>
-
-      {/* Profile Header */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4 mb-4">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={account.profilePhoto} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-xl">
-                {account.name?.[0]?.toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold">{account.name}</h1>
-              <p className="text-muted-foreground capitalize">{account.role}</p>
-              {'privacySettings' in account && account.privacySettings?.showLocation && account.location && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  📍 {account.location.city}
-                  {account.location.state && `, ${account.location.state}`}
-                </p>
-              )}
-            </div>
-            <div className="flex gap-2">
-              {!isAnyBlock && (
-                <Link href={`/messages?to=${account._id}`}>
-                  <Button>Send Message</Button>
-                </Link>
-              )}
-              {isBlockedByThem && !isBlockedByMe && (
-                <p className="text-sm text-muted-foreground self-center">
-                  This user is not accepting messages
-                </p>
-              )}
-              <Button
-                variant={isBlockedByMe ? "outline" : "ghost"}
-                size="sm"
-                className={isBlockedByMe ? "text-destructive border-destructive" : "text-muted-foreground"}
-                onClick={async () => {
-                  try {
-                    if (isBlockedByMe) {
-                      await unblockUser({ accountId: accountId as any });
-                      toast.success("User unblocked");
-                    } else {
-                      await blockUser({ accountId: accountId as any });
-                      toast.success("User blocked");
-                    }
-                  } catch (error) {
-                    toast.error("Failed to update block status");
-                  }
-                }}
-              >
-                {isBlockedByMe ? "Unblock" : "Block"}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Warriors */}
-      {warriors && warriors.length > 0 && (
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Warriors</h2>
-          <WarriorList
-            warriors={warriors.map((w) => ({
-              ...w,
-              _id: w._id.toString(),
-            }))}
-            onWarriorClick={(warrior) => {
-              // Navigate to warrior detail page
-              window.location.href = `/profile/warrior/${warrior._id}`;
-            }}
-          />
-        </section>
-      )}
-
-      {warriors && warriors.length === 0 && (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground">
-              No public warriors to display.
+    <>
+      <GradientHeader>
+        <div className="flex items-center justify-between pb-2">
+          <div>
+            <p className="section-label opacity-80 mb-1">
+              <Link href="/map" className="text-white/80 hover:text-white">
+                &larr; Back to Map
+              </Link>
             </p>
+            <h1 className="font-heading text-2xl font-semibold text-white">{account.name}</h1>
+            <p className="text-white/70 capitalize mt-0.5">{account.role}</p>
+          </div>
+          <Avatar className="h-14 w-14 border-2 border-white/30">
+            <AvatarImage src={account.profilePhoto} />
+            <AvatarFallback className="bg-white/20 text-white text-xl font-heading font-semibold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+      </GradientHeader>
+
+      <ContentPanel>
+        {/* Profile Header Card */}
+        <Card className="mb-6 rounded-2xl">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={account.profilePhoto} />
+                <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-xl font-heading font-semibold">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <h2 className="text-xl font-heading font-semibold">{account.name}</h2>
+                <p className="text-muted-foreground capitalize">{account.role}</p>
+                {'privacySettings' in account && account.privacySettings?.showLocation && account.location && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {account.location.city}
+                    {account.location.state && `, ${account.location.state}`}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col gap-2 items-end">
+                {!isAnyBlock && (
+                  <Link href={`/messages?to=${account._id}`}>
+                    <Button size="sm">Send Message</Button>
+                  </Link>
+                )}
+                {isBlockedByThem && !isBlockedByMe && (
+                  <p className="text-sm text-muted-foreground">
+                    Not accepting messages
+                  </p>
+                )}
+                <Button
+                  variant={isBlockedByMe ? "outline" : "ghost"}
+                  size="sm"
+                  className={isBlockedByMe ? "text-destructive border-destructive" : "text-muted-foreground"}
+                  onClick={async () => {
+                    try {
+                      if (isBlockedByMe) {
+                        await unblockUser({ accountId: accountId as any });
+                        toast.success("User unblocked");
+                      } else {
+                        await blockUser({ accountId: accountId as any });
+                        toast.success("User blocked");
+                      }
+                    } catch (error) {
+                      toast.error("Failed to update block status");
+                    }
+                  }}
+                >
+                  {isBlockedByMe ? "Unblock" : "Block"}
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
-      )}
-    </div>
+
+        {/* Warriors */}
+        {warriors && warriors.length > 0 && (
+          <section>
+            <p className="section-label mb-4">Warriors</p>
+            <WarriorList
+              warriors={warriors.map((w) => ({
+                ...w,
+                _id: w._id.toString(),
+              }))}
+              onWarriorClick={(warrior) => {
+                window.location.href = `/profile/warrior/${warrior._id}`;
+              }}
+            />
+          </section>
+        )}
+
+        {warriors && warriors.length === 0 && (
+          <Card className="rounded-2xl">
+            <CardContent className="py-8 text-center">
+              <p className="text-muted-foreground">
+                No public warriors to display.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </ContentPanel>
+    </>
   );
 }
 
 export default function PublicProfilePage() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
       <AuthLoading>
         <div className="flex items-center justify-center min-h-[50vh]">
           <p>Loading...</p>
@@ -182,6 +200,6 @@ export default function PublicProfilePage() {
       <Authenticated>
         <PublicProfileContent />
       </Authenticated>
-    </div>
+    </>
   );
 }

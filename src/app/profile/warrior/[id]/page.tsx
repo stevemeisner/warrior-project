@@ -11,6 +11,7 @@ import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+import { GradientHeader, ContentPanel } from "@/components/gradient-header";
 
 function WarriorDetailContent() {
   const params = useParams();
@@ -92,148 +93,169 @@ function WarriorDetailContent() {
 
   if (isEditing) {
     return (
-      <div>
-        <div className="mb-6">
-          <button
-            onClick={() => setIsEditing(false)}
-            className="text-primary hover:underline"
-          >
-            &larr; Cancel editing
-          </button>
-        </div>
-        <WarriorForm
-          warrior={{
-            _id: warrior._id,
-            name: warrior.name,
-            dateOfBirth: warrior.dateOfBirth,
-            condition: warrior.condition,
-            bio: warrior.bio,
-            visibility: warrior.visibility,
-          }}
-          onSuccess={() => setIsEditing(false)}
-        />
-      </div>
+      <>
+        <GradientHeader>
+          <div className="pb-2">
+            <p className="section-label opacity-80 mb-1">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="text-white/80 hover:text-white"
+              >
+                &larr; Cancel editing
+              </button>
+            </p>
+            <h1 className="font-heading text-2xl font-semibold text-white">Edit {warrior.name}</h1>
+          </div>
+        </GradientHeader>
+        <ContentPanel>
+          <WarriorForm
+            warrior={{
+              _id: warrior._id,
+              name: warrior.name,
+              dateOfBirth: warrior.dateOfBirth,
+              condition: warrior.condition,
+              bio: warrior.bio,
+              visibility: warrior.visibility,
+            }}
+            onSuccess={() => setIsEditing(false)}
+          />
+        </ContentPanel>
+      </>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="mb-6">
-        <Link href="/dashboard" className="text-primary hover:underline">
-          &larr; Back to Dashboard
-        </Link>
-      </div>
-
-      {/* Warrior Info */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-2xl">{warrior.name}</CardTitle>
-          <StatusBadge status={warrior.currentStatus as WarriorStatus} size="lg" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {warrior.condition && (
-            <div>
-              <span className="text-sm text-muted-foreground">Condition:</span>
-              <p className="font-medium">{warrior.condition}</p>
-            </div>
-          )}
-          {warrior.dateOfBirth && (
-            <div>
-              <span className="text-sm text-muted-foreground">Date of Birth:</span>
-              <p className="font-medium">{new Date(warrior.dateOfBirth).toLocaleDateString()}</p>
-            </div>
-          )}
-          {warrior.bio && (
-            <div>
-              <span className="text-sm text-muted-foreground">About:</span>
-              <p className="mt-1">{warrior.bio}</p>
-            </div>
-          )}
+    <>
+      <GradientHeader>
+        <div className="flex items-center justify-between pb-2">
           <div>
-            <span className="text-sm text-muted-foreground">Visibility:</span>
-            <p className="font-medium capitalize">{warrior.visibility}</p>
-          </div>
-
-          {isOwner && (
-            <div className="flex gap-2 pt-4 border-t">
-              <Button onClick={() => setIsEditing(true)}>Edit Warrior</Button>
-              <Button variant="destructive" onClick={handleDelete}>
-                Delete
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Status Update (for owners) */}
-      {isOwner && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Update Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <StatusSelector
-              currentStatus={warrior.currentStatus as WarriorStatus}
-              onStatusChange={handleStatusChange}
-              disabled={isUpdatingStatus}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Status History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Status History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {statusHistory === undefined ? (
-            <p className="text-muted-foreground">Loading history...</p>
-          ) : statusHistory.length > 0 ? (
-            <ul className="space-y-3">
-              {statusHistory.map((update) => (
-                <li
-                  key={update._id}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-muted/50"
-                >
-                  <StatusBadge
-                    status={update.status as WarriorStatus}
-                    showLabel={false}
-                    size="sm"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium capitalize">{update.status}</span>
-                      <span className="text-xs text-muted-foreground">
-                        by {update.updatedByName}
-                      </span>
-                    </div>
-                    {update.context && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        &quot;{update.context}&quot;
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(update.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted-foreground text-center py-4">
-              No status history yet
+            <p className="section-label opacity-80 mb-1">
+              <Link href="/dashboard" className="text-white/80 hover:text-white">
+                &larr; Back to Dashboard
+              </Link>
             </p>
+            <h1 className="font-heading text-2xl font-semibold text-white">{warrior.name}</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <StatusBadge status={warrior.currentStatus as WarriorStatus} size="lg" />
+          </div>
+        </div>
+      </GradientHeader>
+
+      <ContentPanel>
+        <div className="space-y-6">
+          {/* Warrior Info */}
+          <Card className="rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="font-heading font-semibold text-xl">{warrior.name}</CardTitle>
+              <StatusBadge status={warrior.currentStatus as WarriorStatus} size="lg" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {warrior.condition && (
+                <div>
+                  <span className="text-sm text-muted-foreground">Condition:</span>
+                  <p className="font-medium">{warrior.condition}</p>
+                </div>
+              )}
+              {warrior.dateOfBirth && (
+                <div>
+                  <span className="text-sm text-muted-foreground">Date of Birth:</span>
+                  <p className="font-medium">{new Date(warrior.dateOfBirth).toLocaleDateString()}</p>
+                </div>
+              )}
+              {warrior.bio && (
+                <div>
+                  <span className="text-sm text-muted-foreground">About:</span>
+                  <p className="mt-1">{warrior.bio}</p>
+                </div>
+              )}
+              <div>
+                <span className="text-sm text-muted-foreground">Visibility:</span>
+                <p className="font-medium capitalize">{warrior.visibility}</p>
+              </div>
+
+              {isOwner && (
+                <div className="flex gap-2 pt-4 border-t">
+                  <Button onClick={() => setIsEditing(true)}>Edit Warrior</Button>
+                  <Button variant="destructive" onClick={handleDelete}>
+                    Delete
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Status Update (for owners) */}
+          {isOwner && (
+            <Card className="rounded-2xl">
+              <CardHeader>
+                <CardTitle className="section-label">Update Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <StatusSelector
+                  currentStatus={warrior.currentStatus as WarriorStatus}
+                  onStatusChange={handleStatusChange}
+                  disabled={isUpdatingStatus}
+                />
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
-    </div>
+
+          {/* Status History */}
+          <Card className="rounded-2xl">
+            <CardHeader>
+              <CardTitle className="section-label">Status History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {statusHistory === undefined ? (
+                <p className="text-muted-foreground">Loading history...</p>
+              ) : statusHistory.length > 0 ? (
+                <ul className="space-y-3">
+                  {statusHistory.map((update) => (
+                    <li
+                      key={update._id}
+                      className="flex items-start gap-3 p-3 rounded-2xl bg-muted/50"
+                    >
+                      <StatusBadge
+                        status={update.status as WarriorStatus}
+                        showLabel={false}
+                        size="sm"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-heading font-semibold capitalize">{update.status}</span>
+                          <span className="text-xs text-muted-foreground">
+                            by {update.updatedByName}
+                          </span>
+                        </div>
+                        {update.context && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            &quot;{update.context}&quot;
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(update.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted-foreground text-center py-4">
+                  No status history yet
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </ContentPanel>
+    </>
   );
 }
 
 export default function WarriorDetailPage() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
       <AuthLoading>
         <div className="flex items-center justify-center min-h-[50vh]">
           <p>Loading...</p>
@@ -252,6 +274,6 @@ export default function WarriorDetailPage() {
       <Authenticated>
         <WarriorDetailContent />
       </Authenticated>
-    </div>
+    </>
   );
 }

@@ -4,10 +4,11 @@ import { WarriorForm } from "@/components/warrior-form";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { GradientHeader, ContentPanel } from "@/components/gradient-header";
 
 export default function NewWarriorPage() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
       <AuthLoading>
         <div className="flex items-center justify-center min-h-[50vh]">
           <p>Loading...</p>
@@ -24,13 +25,20 @@ export default function NewWarriorPage() {
         </div>
       </Unauthenticated>
       <Authenticated>
-        <div className="mb-6">
-          <Link href="/dashboard" className="text-primary hover:underline">
-            &larr; Back to Dashboard
-          </Link>
-        </div>
-        <WarriorForm />
+        <GradientHeader>
+          <div className="pb-2">
+            <p className="section-label opacity-80 mb-1">
+              <Link href="/profile" className="text-white/80 hover:text-white">
+                &larr; Back to Profile
+              </Link>
+            </p>
+            <h1 className="font-heading text-2xl font-semibold text-white">Add a Warrior</h1>
+          </div>
+        </GradientHeader>
+        <ContentPanel>
+          <WarriorForm />
+        </ContentPanel>
       </Authenticated>
-    </div>
+    </>
   );
 }
