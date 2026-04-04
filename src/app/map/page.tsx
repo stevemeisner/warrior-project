@@ -12,6 +12,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { StatusBadge, WarriorStatus } from "@/components/status-selector";
 import { MapWarriorListPanel } from "@/components/map-warrior-list-panel";
+import { statusIconMap } from "@/components/icons/status-icons";
 import Supercluster from "supercluster";
 
 export interface ViewportBounds {
@@ -36,8 +37,8 @@ export function isWithinBounds(
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
 const STATUS_COLORS: Record<WarriorStatus, string> = {
-  thriving: "#7cb086",
-  stable: "#4a90a4",
+  thriving: "#1a7a6a",
+  stable: "#3aab7a",
   struggling: "#e5a85f",
   hospitalized: "#d97459",
   needsSupport: "#9b7ebd",
@@ -228,7 +229,7 @@ function MapContent() {
           width: ${size}px;
           height: ${size}px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #6366f1, #8b5cf6);
+          background: linear-gradient(135deg, #1a7a6a, #3aab7a);
           color: white;
           display: flex;
           align-items: center;
@@ -236,8 +237,8 @@ function MapContent() {
           cursor: pointer;
           font-weight: bold;
           font-size: ${Math.max(12, size / 3)}px;
-          box-shadow: 0 3px 8px rgba(99,102,241,0.4);
-          border: 3px solid rgba(255,255,255,0.8);
+          box-shadow: 0 3px 8px rgba(26,122,106,0.45);
+          border: 3px solid rgba(255,255,255,0.85);
           transition: transform 0.2s;
         `;
         el.textContent = String(count);
@@ -271,11 +272,11 @@ function MapContent() {
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          font-size: 20px;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+          font-size: 18px;
+          box-shadow: 0 2px 8px rgba(26,122,106,0.18);
           transition: transform 0.2s;
         `;
-        el.innerHTML = `<span aria-hidden="true">${STATUS_EMOJIS[props.status] || "?"}</span>`;
+        el.innerHTML = `<span aria-hidden="true" style="color:${STATUS_COLORS[props.status] || "#a8a8a8"};display:flex;align-items:center;justify-content:center;">${STATUS_EMOJIS[props.status] || "?"}</span>`;
         el.addEventListener("mouseenter", () => { el.style.transform = "scale(1.15)"; });
         el.addEventListener("mouseleave", () => { el.style.transform = "scale(1)"; });
 
@@ -310,20 +311,24 @@ function MapContent() {
   return (
     <div className="h-[calc(100vh-56px)] relative">
       {/* Filter Bar */}
-      <div className="absolute top-4 left-4 right-4 md:left-4 md:right-auto z-10 bg-white rounded-lg shadow-lg p-2 flex flex-wrap gap-2">
-        {statusOptions.map((option) => (
-          <Button
-            key={option.value}
-            size="sm"
-            variant={statusFilter === option.value ? "default" : "outline"}
-            onClick={() => setStatusFilter(option.value)}
-          >
-            {option.value !== "all" && (
-              <span className="mr-1" aria-hidden="true">{STATUS_EMOJIS[option.value as WarriorStatus]}</span>
-            )}
-            {option.label}
-          </Button>
-        ))}
+      <div className="absolute top-4 left-4 right-4 md:left-4 md:right-auto z-10 bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_24px_rgba(26,122,106,0.12)] border border-white/60 p-2 flex flex-wrap gap-2">
+        {statusOptions.map((option) => {
+          const StatusIcon = option.value !== "all" ? statusIconMap[option.value as WarriorStatus] : null;
+          return (
+            <Button
+              key={option.value}
+              size="sm"
+              variant={statusFilter === option.value ? "default" : "outline"}
+              onClick={() => setStatusFilter(option.value)}
+              className="gap-1.5"
+            >
+              {StatusIcon && (
+                <StatusIcon className="size-3.5" aria-hidden="true" />
+              )}
+              {option.label}
+            </Button>
+          );
+        })}
       </div>
 
       {/* Warrior List Panel */}
@@ -362,18 +367,18 @@ function MapContent() {
       {/* Warrior Preview Card */}
       {selectedWarrior && (
         <div className="absolute bottom-20 left-4 right-4 md:bottom-4 md:left-auto md:right-4 md:w-80 z-10">
-          <Card className="shadow-xl border-0 bg-card/95 backdrop-blur-sm">
+          <Card className="rounded-2xl shadow-[0_8px_32px_rgba(26,122,106,0.18)] border border-white/60 bg-white/95 backdrop-blur-sm">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12 ring-2 ring-primary/20">
+                  <Avatar className="h-12 w-12 ring-2 ring-[#1a7a6a]/20">
                     <AvatarImage src={selectedWarrior.profilePhoto} />
-                    <AvatarFallback className="bg-primary/15 text-primary font-semibold">
+                    <AvatarFallback className="bg-gradient-to-br from-[#1a7a6a] to-[#3aab7a] text-white font-semibold">
                       {selectedWarrior.name?.[0]?.toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <CardTitle className="text-lg">{selectedWarrior.name}</CardTitle>
+                    <CardTitle className="text-lg font-[family-name:var(--font-comfortaa)]">{selectedWarrior.name}</CardTitle>
                     <StatusBadge status={selectedWarrior.currentStatus} size="sm" />
                   </div>
                 </div>
@@ -394,8 +399,9 @@ function MapContent() {
                 </p>
               )}
               {selectedWarrior.account?.location?.city && (
-                <p className="text-sm text-muted-foreground mb-3">
-                  📍 {selectedWarrior.account.location.city}
+                <p className="text-sm text-muted-foreground mb-3 flex items-center gap-1">
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="size-3.5 text-[#1a7a6a] flex-shrink-0" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                  {selectedWarrior.account.location.city}
                   {selectedWarrior.account.location.state &&
                     `, ${selectedWarrior.account.location.state}`}
                 </p>

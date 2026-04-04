@@ -54,7 +54,7 @@ export function MapWarriorListPanel({
   const DesktopPanel = () => (
     <div
       className={cn(
-        "hidden md:flex flex-col bg-white rounded-lg shadow-lg transition-all duration-300",
+        "hidden md:flex flex-col bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_24px_rgba(26,122,106,0.12)] border border-white/60 transition-all duration-300",
         isCollapsed ? "w-12" : "w-80",
         className
       )}
@@ -106,7 +106,7 @@ export function MapWarriorListPanel({
                   >
                     <Avatar className="h-10 w-10 flex-shrink-0">
                       <AvatarImage src={warrior.profilePhoto} alt={warrior.name} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                      <AvatarFallback className="bg-gradient-to-br from-[#1a7a6a] to-[#3aab7a] text-white text-xs">
                         {getInitials(warrior.name)}
                       </AvatarFallback>
                     </Avatar>
@@ -141,7 +141,7 @@ export function MapWarriorListPanel({
     return (
       <div
         className={cn(
-          "md:hidden fixed bottom-0 left-0 right-0 bg-white rounded-t-xl shadow-lg transition-all duration-300 z-20",
+          "md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm rounded-t-2xl shadow-[0_-4px_24px_rgba(26,122,106,0.12)] border-t border-white/60 transition-all duration-300 z-20",
           isMobileExpanded ? "max-h-[70vh]" : "max-h-48"
         )}
       >
@@ -208,7 +208,7 @@ export function MapWarriorListPanel({
                   >
                     <Avatar className="h-10 w-10 flex-shrink-0">
                       <AvatarImage src={warrior.profilePhoto} alt={warrior.name} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                      <AvatarFallback className="bg-gradient-to-br from-[#1a7a6a] to-[#3aab7a] text-white text-xs">
                         {getInitials(warrior.name)}
                       </AvatarFallback>
                     </Avatar>
