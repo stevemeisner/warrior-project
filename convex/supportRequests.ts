@@ -44,6 +44,13 @@ export const createSupportRequest = mutation({
       throw new Error("At least one help type is required");
     }
 
+    const invalidTypes = args.helpTypes.filter(
+      (t) => !(helpTypeValues as readonly string[]).includes(t)
+    );
+    if (invalidTypes.length > 0) {
+      throw new Error(`Invalid help types: ${invalidTypes.join(", ")}`);
+    }
+
     if (args.description && args.description.length > 5000) {
       throw new Error("Description must be 5000 characters or less");
     }
@@ -246,6 +253,15 @@ export const updateSupportRequest = mutation({
 
     if (args.helpTypes !== undefined && args.helpTypes.length === 0) {
       throw new Error("At least one help type is required");
+    }
+
+    if (args.helpTypes !== undefined) {
+      const invalidTypes = args.helpTypes.filter(
+        (t) => !(helpTypeValues as readonly string[]).includes(t)
+      );
+      if (invalidTypes.length > 0) {
+        throw new Error(`Invalid help types: ${invalidTypes.join(", ")}`);
+      }
     }
 
     const updates: Record<string, unknown> = {

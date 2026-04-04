@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
 import { auth } from "./auth";
 import { accountRoles, authProviders, visibilitySettings } from "./schema";
 
@@ -65,13 +65,10 @@ export const getAccount = query({
   },
 });
 
-// Get an account by email (authenticated users only, returns public fields for others)
-export const getAccountByEmail = query({
+// Get an account by email (internal only — prevents email enumeration from client)
+export const getAccountByEmail = internalQuery({
   args: { email: v.string() },
   handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
-    if (!userId) return null; // Require authentication
-
     const account = await ctx.db
       .query("accounts")
       .withIndex("by_email", (q) => q.eq("email", args.email))
@@ -79,22 +76,11 @@ export const getAccountByEmail = query({
 
     if (!account) return null;
 
-    // If viewing own account, return all fields
-    const viewerAccount = await ctx.db
-      .query("accounts")
-      .withIndex("by_authId", (q) => q.eq("authId", userId))
-      .first();
-
-    if (viewerAccount?._id === account._id) {
-      return account;
-    }
-
-    // For other users, return only public profile fields (minimal for caregiver invite flow)
     return {
       _id: account._id,
       name: account.name,
       profilePhoto: account.profilePhoto,
-      // Exclude most fields to prevent email enumeration abuse
+      email: account.email,
     };
   },
 });
@@ -112,6 +98,13 @@ export const createAccount = mutation({
     const userId = await auth.getUserId(ctx);
     if (!userId) {
       throw new Error("Not authenticated");
+    }
+
+    if (args.name.length > 100) {
+      throw new Error("Name must be 100 characters or less");
+    }
+    if (args.email.length > 254) {
+      throw new Error("Invalid email address");
     }
 
     // Check if account already exists
@@ -181,7 +174,6 @@ export const completeOnboarding = mutation({
 export const updateAccount = mutation({
   args: {
     name: v.optional(v.string()),
-    profilePhoto: v.optional(v.string()),
     location: v.optional(
       v.object({
         latitude: v.number(),
@@ -206,12 +198,15 @@ export const updateAccount = mutation({
       throw new Error("Account not found");
     }
 
+    if (args.name !== undefined && args.name.length > 100) {
+      throw new Error("Name must be 100 characters or less");
+    }
+
     const updates: Record<string, unknown> = {
       updatedAt: Date.now(),
     };
 
     if (args.name !== undefined) updates.name = args.name;
-    if (args.profilePhoto !== undefined) updates.profilePhoto = args.profilePhoto;
     if (args.location !== undefined) updates.location = args.location;
 
     await ctx.db.patch(account._id, updates);

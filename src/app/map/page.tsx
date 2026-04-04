@@ -71,7 +71,7 @@ interface WarriorPoint {
 function MapContent() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const [selectedWarrior, setSelectedWarrior] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState<WarriorStatus | "all">("all");
   const [mapReady, setMapReady] = useState(false);
@@ -192,6 +192,8 @@ function MapContent() {
     );
 
     return () => {
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current.clear();
       if (map.current) {
         map.current.remove();
         map.current = null;
@@ -199,16 +201,22 @@ function MapContent() {
     };
   }, [updateViewport]);
 
-  // Render clusters and markers
+  // Render clusters and markers (keyed cache — only add/remove changed markers)
   useEffect(() => {
     if (!map.current || !mapReady) return;
 
-    // Remove existing markers
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
+    const nextKeys = new Set<string>();
 
     clusters.forEach((feature) => {
       const [lng, lat] = feature.geometry.coordinates;
+      const key = feature.properties.cluster
+        ? `cluster-${feature.properties.cluster_id}`
+        : `warrior-${(feature.properties as WarriorPoint["properties"]).warriorId}`;
+
+      nextKeys.add(key);
+
+      // Skip if marker already exists at this key
+      if (markersRef.current.has(key)) return;
 
       if (feature.properties.cluster) {
         // Cluster marker
@@ -247,7 +255,7 @@ function MapContent() {
         });
 
         const marker = new mapboxgl.Marker(el).setLngLat([lng, lat]).addTo(map.current!);
-        markersRef.current.push(marker);
+        markersRef.current.set(key, marker);
       } else {
         // Individual warrior marker
         const props = feature.properties as WarriorPoint["properties"];
@@ -272,15 +280,22 @@ function MapContent() {
         el.addEventListener("mouseleave", () => { el.style.transform = "scale(1)"; });
 
         el.addEventListener("click", () => {
-          // Find the full warrior data
           const warrior = warriors?.find((w) => w._id === props.warriorId);
           if (warrior) setSelectedWarrior(warrior);
         });
 
         const marker = new mapboxgl.Marker(el).setLngLat([lng, lat]).addTo(map.current!);
-        markersRef.current.push(marker);
+        markersRef.current.set(key, marker);
       }
     });
+
+    // Remove markers that are no longer in the current clusters
+    for (const [key, marker] of markersRef.current) {
+      if (!nextKeys.has(key)) {
+        marker.remove();
+        markersRef.current.delete(key);
+      }
+    }
   }, [clusters, mapReady, warriors, cluster]);
 
   const statusOptions: { value: WarriorStatus | "all"; label: string }[] = [

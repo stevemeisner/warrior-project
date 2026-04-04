@@ -43,7 +43,7 @@ export const getMyCaregivers = query({
             ? {
                 _id: caregiverAccount._id,
                 name: caregiverAccount.name,
-                email: caregiverAccount.email,
+                email: caregiverAccount.privacySettings?.showEmail ? caregiverAccount.email : undefined,
                 profilePhoto: caregiverAccount.profilePhoto,
               }
             : null,
@@ -90,7 +90,7 @@ export const getMyFamilies = query({
             ? {
                 _id: familyAccount._id,
                 name: familyAccount.name,
-                email: familyAccount.email,
+                email: familyAccount.privacySettings?.showEmail ? familyAccount.email : undefined,
                 profilePhoto: familyAccount.profilePhoto,
               }
             : null,

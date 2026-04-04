@@ -240,7 +240,6 @@ export const updateWarrior = mutation({
     name: v.optional(v.string()),
     dateOfBirth: v.optional(v.string()),
     condition: v.optional(v.string()),
-    profilePhoto: v.optional(v.string()),
     bio: v.optional(v.string()),
     visibility: v.optional(visibilitySettings),
   },
@@ -292,7 +291,6 @@ export const updateWarrior = mutation({
     if (args.name !== undefined) updates.name = args.name;
     if (args.dateOfBirth !== undefined) updates.dateOfBirth = args.dateOfBirth;
     if (args.condition !== undefined) updates.condition = args.condition;
-    if (args.profilePhoto !== undefined) updates.profilePhoto = args.profilePhoto;
     if (args.bio !== undefined) updates.bio = args.bio;
     if (args.visibility !== undefined) updates.visibility = args.visibility;
 

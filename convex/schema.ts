@@ -110,7 +110,8 @@ export default defineSchema({
   })
     .index("by_email", ["email"])
     .index("by_authId", ["authId"])
-    .index("by_role", ["role"]),
+    .index("by_role", ["role"])
+    .searchIndex("search_name", { searchField: "name" }),
 
   // Warriors - children with special needs
   warriors: defineTable({
@@ -134,7 +135,8 @@ export default defineSchema({
   })
     .index("by_account", ["accountId"])
     .index("by_status", ["currentStatus"])
-    .index("by_visibility", ["visibility"]),
+    .index("by_visibility", ["visibility"])
+    .searchIndex("search_name", { searchField: "name", filterFields: ["visibility"] }),
 
   // Caregivers - linked to family accounts with specific permissions
   caregivers: defineTable({
@@ -224,7 +226,8 @@ export default defineSchema({
     .index("by_author", ["authorId"])
     .index("by_category", ["category"])
     .index("by_created", ["createdAt"])
-    .index("by_pinned_and_created", ["isPinned", "createdAt"]),
+    .index("by_pinned_and_created", ["isPinned", "createdAt"])
+    .searchIndex("search_title", { searchField: "title" }),
 
   // Comments - replies to threads (supports nesting)
   comments: defineTable({
@@ -286,6 +289,14 @@ export default defineSchema({
     .index("by_comment", ["commentId"])
     .index("by_comment_and_account", ["commentId", "accountId"])
     .index("by_account", ["accountId"]),
+
+  // Thread view dedup - prevents inflating view counts
+  threadViews: defineTable({
+    threadId: v.id("threads"),
+    accountId: v.id("accounts"),
+    lastViewedAt: v.number(),
+  })
+    .index("by_thread_and_account", ["threadId", "accountId"]),
 
   // Blocked users - for privacy/moderation
   blockedUsers: defineTable({

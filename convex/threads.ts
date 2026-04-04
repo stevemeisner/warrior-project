@@ -25,7 +25,7 @@ export const getThreads = query({
         .withIndex("by_pinned_and_created");
     }
 
-    const threads = await query.order("desc").take(args.limit || 50);
+    const threads = await query.order("desc").take(Math.min(args.limit || 50, 200));
 
     // Sort by popularity if requested
     let sortedThreads = threads;
@@ -263,23 +263,48 @@ export const deleteThread = mutation({
   },
 });
 
-// Increment view count (requires authentication to prevent abuse)
+// Increment view count (deduplicated per user — each user counts once per thread)
 export const incrementViewCount = mutation({
   args: { threadId: v.id("threads") },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
-    if (!userId) {
-      // Silently ignore unauthenticated view count increments
-      return null;
-    }
+    if (!userId) return null;
+
+    const account = await ctx.db
+      .query("accounts")
+      .withIndex("by_authId", (q) => q.eq("authId", userId))
+      .first();
+
+    if (!account) return null;
 
     const thread = await ctx.db.get(args.threadId);
     if (!thread) {
       throw new Error("Thread not found");
     }
 
+    // Dedup: only count once per user per thread
+    const existingView = await ctx.db
+      .query("threadViews")
+      .withIndex("by_thread_and_account", (q) =>
+        q.eq("threadId", args.threadId).eq("accountId", account._id)
+      )
+      .first();
+
+    if (existingView) {
+      // Already viewed — update timestamp but don't increment count
+      await ctx.db.patch(existingView._id, { lastViewedAt: Date.now() });
+      return args.threadId;
+    }
+
+    // First view by this user — increment and record
     await ctx.db.patch(args.threadId, {
       viewCount: thread.viewCount + 1,
+    });
+
+    await ctx.db.insert("threadViews", {
+      threadId: args.threadId,
+      accountId: account._id,
+      lastViewedAt: Date.now(),
     });
 
     return args.threadId;

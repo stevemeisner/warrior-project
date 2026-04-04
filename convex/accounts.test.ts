@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { describe, expect, it, beforeEach } from "vitest";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { modules } from "./test.setup";
 import { createAccount, resetFactoryCounter } from "./test.factories";
@@ -279,56 +279,45 @@ describe("updateNotificationPreferences", () => {
   });
 });
 
-describe("getAccountByEmail", () => {
-  it("returns null for unauthenticated users", async () => {
+describe("getAccountByEmail (internal)", () => {
+  it("returns account by email", async () => {
     const t = convexTest(schema, modules);
-    await createAccount(t, { email: "alice@example.com" });
-
-    const result = await t.query(api.accounts.getAccountByEmail, {
-      email: "alice@example.com",
-    });
-    expect(result).toBeNull();
-  });
-
-  it("returns full profile when looking up own email", async () => {
-    const t = convexTest(schema, modules);
-    const { asUser } = await createAccount(t, {
+    await createAccount(t, {
       email: "alice@example.com",
       name: "Alice",
     });
 
-    const result = await asUser.query(api.accounts.getAccountByEmail, {
+    const result = await t.query(internal.accounts.getAccountByEmail, {
       email: "alice@example.com",
     }) as any;
 
     expect(result).not.toBeNull();
     expect(result.name).toBe("Alice");
     expect(result.email).toBe("alice@example.com");
+    expect(result._id).toBeDefined();
   });
 
-  it("returns minimal fields for other users' emails", async () => {
+  it("returns only selected fields", async () => {
     const t = convexTest(schema, modules);
     await createAccount(t, {
       email: "alice@example.com",
       name: "Alice",
     });
-    const { asUser: asBob } = await createAccount(t);
 
-    const result = await asBob.query(api.accounts.getAccountByEmail, {
+    const result = await t.query(internal.accounts.getAccountByEmail, {
       email: "alice@example.com",
-    });
+    }) as any;
 
-    expect(result).not.toBeNull();
-    expect(result!.name).toBe("Alice");
-    // Should NOT contain email (to prevent enumeration)
-    expect(result).not.toHaveProperty("email");
+    // Should not leak sensitive fields
+    expect(result).not.toHaveProperty("authId");
+    expect(result).not.toHaveProperty("privacySettings");
+    expect(result).not.toHaveProperty("notificationPreferences");
   });
 
   it("returns null for nonexistent email", async () => {
     const t = convexTest(schema, modules);
-    const { asUser } = await createAccount(t);
 
-    const result = await asUser.query(api.accounts.getAccountByEmail, {
+    const result = await t.query(internal.accounts.getAccountByEmail, {
       email: "nonexistent@example.com",
     });
     expect(result).toBeNull();

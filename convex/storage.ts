@@ -1,6 +1,30 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { auth } from "./auth";
+import type { MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
+];
+
+async function validateImageUpload(ctx: MutationCtx, storageId: Id<"_storage">) {
+  const metadata = await ctx.db.system.get(storageId);
+  if (!metadata) {
+    throw new Error("Uploaded file not found");
+  }
+  if (!metadata.contentType || !ALLOWED_IMAGE_TYPES.includes(metadata.contentType)) {
+    // Clean up the invalid file
+    await ctx.storage.delete(storageId);
+    throw new Error(
+      `Invalid file type: ${metadata.contentType || "unknown"}. Allowed: ${ALLOWED_IMAGE_TYPES.join(", ")}`
+    );
+  }
+}
 
 // Generate an upload URL for Convex file storage
 export const generateUploadUrl = mutation({
@@ -13,10 +37,13 @@ export const generateUploadUrl = mutation({
   },
 });
 
-// Get a serving URL for a stored file
+// Get a serving URL for a stored file (authenticated only)
 export const getFileUrl = query({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) return null;
+
     return await ctx.storage.getUrl(args.storageId);
   },
 });
@@ -34,6 +61,8 @@ export const updateAccountPhoto = mutation({
       .first();
 
     if (!account) throw new Error("Account not found");
+
+    await validateImageUpload(ctx, args.storageId);
 
     // Delete old stored photo if exists
     if (account.profilePhotoStorageId) {
@@ -90,6 +119,8 @@ export const updateWarriorPhoto = mutation({
         throw new Error("Not authorized to update this warrior's photo");
       }
     }
+
+    await validateImageUpload(ctx, args.storageId);
 
     // Delete old stored photo if exists
     if (warrior.profilePhotoStorageId) {
