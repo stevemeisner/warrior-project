@@ -53,6 +53,13 @@ function DashboardContent() {
 
   const updateStatus = useMutation(api.status.updateStatus);
 
+  // Redirect to onboarding if no account exists (hook must be before early returns)
+  useEffect(() => {
+    if (account === null) {
+      router.push("/onboarding");
+    }
+  }, [account, router]);
+
   const handleStatusChange = async (warriorId: string, status: WarriorStatus) => {
     try {
       await updateStatus({
@@ -68,13 +75,6 @@ function DashboardContent() {
   if (account === undefined) {
     return <DashboardSkeleton />;
   }
-
-  // No account exists - redirect to onboarding
-  useEffect(() => {
-    if (account === null) {
-      router.push("/onboarding");
-    }
-  }, [account, router]);
 
   if (account === null) {
     return (
