@@ -24,13 +24,13 @@ interface ContentPanelProps {
 
 export function ContentPanel({ children, className }: ContentPanelProps) {
   return (
-    <div className={cn(
-      "bg-background -mt-8 rounded-t-3xl relative z-10 min-h-[60vh]",
-      "px-5 pt-6 pb-8",
-      "max-w-3xl mx-auto md:max-w-none",
-      className
-    )}>
-      {children}
+    <div className="bg-background -mt-8 rounded-t-3xl relative z-10 min-h-[60vh]">
+      <div className={cn(
+        "container mx-auto px-5 pt-6 pb-8",
+        className
+      )}>
+        {children}
+      </div>
     </div>
   );
 }
