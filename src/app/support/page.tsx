@@ -29,16 +29,16 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { GradientHeader, ContentPanel } from "@/components/gradient-header";
-import { HeartHandshake, Plus } from "lucide-react";
+import { HeartHandshake, Plus, UtensilsCrossed, Car, Baby, Heart, Wallet, Stethoscope, ClipboardList } from "lucide-react";
 
-const helpTypeLabels: Record<string, { label: string; emoji: string }> = {
-  meals: { label: "Meals", emoji: "🍽️" },
-  transportation: { label: "Transportation", emoji: "🚗" },
-  childcare: { label: "Childcare", emoji: "👶" },
-  emotional: { label: "Emotional Support", emoji: "💛" },
-  financial: { label: "Financial", emoji: "💰" },
-  medical: { label: "Medical", emoji: "🏥" },
-  other: { label: "Other", emoji: "📋" },
+const helpTypeLabels: Record<string, { label: string; icon: React.ReactNode }> = {
+  meals: { label: "Meals", icon: <UtensilsCrossed className="size-4" /> },
+  transportation: { label: "Transportation", icon: <Car className="size-4" /> },
+  childcare: { label: "Childcare", icon: <Baby className="size-4" /> },
+  emotional: { label: "Emotional Support", icon: <Heart className="size-4" /> },
+  financial: { label: "Financial", icon: <Wallet className="size-4" /> },
+  medical: { label: "Medical", icon: <Stethoscope className="size-4" /> },
+  other: { label: "Other", icon: <ClipboardList className="size-4" /> },
 };
 
 function SupportContent() {
@@ -167,7 +167,7 @@ function SupportContent() {
                   <div className="space-y-2">
                     <Label>What kind of help do you need?</Label>
                     <div className="flex flex-wrap gap-2">
-                      {Object.entries(helpTypeLabels).map(([key, { label, emoji }]) => (
+                      {Object.entries(helpTypeLabels).map(([key, { label, icon }]) => (
                         <button
                           key={key}
                           type="button"
@@ -179,7 +179,7 @@ function SupportContent() {
                           )}
                           onClick={() => toggleHelpType(key)}
                         >
-                          <span>{emoji}</span>
+                          {icon}
                           <span>{label}</span>
                         </button>
                       ))}
@@ -253,7 +253,7 @@ function SupportContent() {
                                 key={type}
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs"
                               >
-                                {helpTypeLabels[type]?.emoji} {helpTypeLabels[type]?.label || type}
+                                {helpTypeLabels[type]?.icon} {helpTypeLabels[type]?.label || type}
                               </span>
                             ))}
                           </div>
@@ -357,7 +357,7 @@ function SupportContent() {
                                 key={type}
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs"
                               >
-                                {helpTypeLabels[type]?.emoji} {helpTypeLabels[type]?.label || type}
+                                {helpTypeLabels[type]?.icon} {helpTypeLabels[type]?.label || type}
                               </span>
                             ))}
                           </div>

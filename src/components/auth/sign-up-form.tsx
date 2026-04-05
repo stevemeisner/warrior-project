@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { Users, HeartHandshake } from "lucide-react";
 
 type AccountRole = "family" | "caregiver";
 
@@ -18,7 +19,7 @@ interface RoleOption {
   value: AccountRole;
   title: string;
   description: string;
-  icon: string;
+  icon: React.ReactNode;
 }
 
 const roleOptions: RoleOption[] = [
@@ -26,13 +27,13 @@ const roleOptions: RoleOption[] = [
     value: "family",
     title: "Family",
     description: "I have a warrior and want to connect with others",
-    icon: "👨‍👩‍👧",
+    icon: <Users className="h-7 w-7 text-primary" strokeWidth={1.75} />,
   },
   {
     value: "caregiver",
     title: "Caregiver",
     description: "I help care for a warrior",
-    icon: "💝",
+    icon: <HeartHandshake className="h-7 w-7 text-accent" strokeWidth={1.75} />,
   },
 ];
 

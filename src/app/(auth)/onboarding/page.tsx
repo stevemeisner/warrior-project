@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { ArrowRight, ArrowLeft, MapPin, Shield, Check } from "lucide-react";
+import { ArrowRight, ArrowLeft, MapPin, Shield, Check, Users, HeartHandshake } from "lucide-react";
 
 type AccountRole = "family" | "caregiver";
 type OnboardingStep = "role" | "warrior" | "location" | "done";
@@ -19,7 +19,7 @@ interface RoleOption {
   value: AccountRole;
   title: string;
   description: string;
-  icon: string;
+  icon: React.ReactNode;
 }
 
 const roleOptions: RoleOption[] = [
@@ -27,13 +27,13 @@ const roleOptions: RoleOption[] = [
     value: "family",
     title: "Family",
     description: "I have a warrior and want to connect with others",
-    icon: "👨‍👩‍👧",
+    icon: <Users className="h-7 w-7 text-primary" strokeWidth={1.75} />,
   },
   {
     value: "caregiver",
     title: "Caregiver",
     description: "I help care for a warrior",
-    icon: "💝",
+    icon: <HeartHandshake className="h-7 w-7 text-accent" strokeWidth={1.75} />,
   },
 ];
 
@@ -247,7 +247,7 @@ export default function OnboardingPage() {
         {currentStep === "role" && (
           <Card>
             <CardHeader className="text-center">
-              {/* NanoBanana illustration placeholder */}
+              {/* TODO: onboarding illustration — step 1 */}
               <CardTitle className="font-heading text-2xl">Welcome to Warrior Project</CardTitle>
               <CardDescription>
                 How would you like to be part of our community?
@@ -286,7 +286,7 @@ export default function OnboardingPage() {
         {currentStep === "warrior" && (
           <Card>
             <CardHeader>
-              {/* NanoBanana illustration placeholder */}
+              {/* TODO: onboarding illustration — add warrior */}
               <div className="flex items-center gap-2">
                 <Shield className="h-5 w-5 text-primary" />
                 <CardTitle className="font-heading">Add Your Warrior</CardTitle>
@@ -355,7 +355,7 @@ export default function OnboardingPage() {
         {currentStep === "location" && (
           <Card>
             <CardHeader>
-              {/* NanoBanana illustration placeholder */}
+              {/* TODO: onboarding illustration — location */}
               <div className="flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-primary" />
                 <CardTitle className="font-heading">Set Your Location</CardTitle>
@@ -415,7 +415,6 @@ export default function OnboardingPage() {
         {currentStep === "done" && (
           <Card>
             <CardHeader className="text-center">
-              {/* NanoBanana illustration placeholder */}
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
                 <Check className="h-8 w-8 text-green-600" />
               </div>

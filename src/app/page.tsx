@@ -122,7 +122,7 @@ export default function Home() {
     <div className="min-h-screen">
       {/* Hero Section */}
       <section className="gradient-header relative py-28 px-4 text-center overflow-hidden">
-        {/* NanoBanana hero illustration placeholder */}
+        {/* TODO: hero illustration */}
 
         <div className="container mx-auto max-w-4xl relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 text-white text-sm font-medium mb-8 backdrop-blur-sm">
