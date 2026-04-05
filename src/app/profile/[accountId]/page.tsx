@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { WarriorList } from "@/components/warrior-card";
@@ -16,6 +16,7 @@ import { GradientHeader, ContentPanel } from "@/components/gradient-header";
 
 function PublicProfileContent() {
   const params = useParams();
+  const router = useRouter();
   const accountId = params.accountId as string;
 
   const account = useQuery(api.accounts.getAccount, { accountId: accountId as any });
@@ -159,7 +160,7 @@ function PublicProfileContent() {
                 _id: w._id.toString(),
               }))}
               onWarriorClick={(warrior) => {
-                window.location.href = `/profile/warrior/${warrior._id}`;
+                router.push(`/profile/warrior/${warrior._id}`);
               }}
             />
           </section>

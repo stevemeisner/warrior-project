@@ -193,6 +193,15 @@ export const adminDeleteThread = mutation({
       await ctx.db.delete(comment._id);
     }
 
+    // Delete thread views
+    const views = await ctx.db
+      .query("threadViews")
+      .withIndex("by_thread_and_account", (q) => q.eq("threadId", args.threadId))
+      .collect();
+    for (const view of views) {
+      await ctx.db.delete(view._id);
+    }
+
     await ctx.db.delete(args.threadId);
     return args.threadId;
   },

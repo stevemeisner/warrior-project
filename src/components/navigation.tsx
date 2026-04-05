@@ -201,7 +201,7 @@ function AuthenticatedNav() {
           </Link>
           <div className="flex items-center gap-1">
             <Link href="/notifications">
-              <Button variant="ghost" size="icon-sm" className="text-white/70 hover:text-white hover:bg-white/10 size-9" aria-label="Notifications">
+              <Button variant="ghost" size="icon-sm" className="relative text-white/70 hover:text-white hover:bg-white/10 size-9" aria-label="Notifications">
                 <Bell className="size-4" strokeWidth={1.75} />
                 {unreadNotifications && unreadNotifications > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 text-[9px] bg-red-500 text-white rounded-full flex items-center justify-center font-bold">

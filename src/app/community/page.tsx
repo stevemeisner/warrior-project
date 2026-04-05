@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,17 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -63,6 +75,7 @@ function ThreadAvatar({ category, authorName, authorPhoto }: { category: string;
 }
 
 function CommunityContent() {
+  const searchParams = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState<Category | "all">("all");
   const [sortBy, setSortBy] = useState<"recent" | "popular">("recent");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -86,7 +99,17 @@ function CommunityContent() {
   const [newCategory, setNewCategory] = useState<Category>("general");
   const [isCreating, setIsCreating] = useState(false);
 
-  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(
+    searchParams.get("thread")
+  );
+
+  // Open thread from URL param (e.g. from search or notifications)
+  useEffect(() => {
+    const threadParam = searchParams.get("thread");
+    if (threadParam) {
+      setSelectedThreadId(threadParam);
+    }
+  }, [searchParams]);
   const selectedThread = useQuery(
     api.threads.getThread,
     selectedThreadId ? { threadId: selectedThreadId as any } : "skip"
@@ -139,7 +162,6 @@ function CommunityContent() {
 
   const handleAdminDelete = async () => {
     if (!selectedThreadId) return;
-    if (!confirm("Are you sure you want to delete this thread? This cannot be undone.")) return;
     try {
       await adminDeleteThread({ threadId: selectedThreadId as any });
       toast.success("Thread deleted");
@@ -476,9 +498,27 @@ function CommunityContent() {
                         <Button variant="ghost" size="sm" onClick={handleToggleLock} title={selectedThread.isLocked ? "Unlock" : "Lock"}>
                           <Lock className={cn("h-3.5 w-3.5", selectedThread.isLocked && "text-orange-500")} />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={handleAdminDelete} title="Delete thread" className="text-destructive hover:text-destructive">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm" title="Delete thread" className="text-destructive hover:text-destructive">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete thread?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete this thread and all its comments. This cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={handleAdminDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     )}
                   </div>

@@ -103,7 +103,7 @@ export const createAccount = mutation({
     if (args.name.length > 100) {
       throw new Error("Name must be 100 characters or less");
     }
-    if (args.email.length > 254) {
+    if (args.email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(args.email)) {
       throw new Error("Invalid email address");
     }
 

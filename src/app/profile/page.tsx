@@ -207,7 +207,7 @@ function ProfileContent() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="section-label">My Caregivers</CardTitle>
-                <Link href="/profile/caregivers">
+                <Link href="/caregivers">
                   <Button size="sm" variant="outline">
                     Manage Caregivers
                   </Button>

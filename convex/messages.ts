@@ -528,13 +528,15 @@ export const markAsRead = mutation({
       throw new Error("Not a participant in this conversation");
     }
 
-    // Get all unread messages
-    const messages = await ctx.db
+    // Get recent messages (most unread will be recent) — scan at most 500 to avoid
+    // hitting Convex mutation limits on very active conversations
+    const recentMessages = await ctx.db
       .query("messages")
-      .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
-      .collect();
+      .withIndex("by_conversation_and_created", (q) => q.eq("conversationId", args.conversationId))
+      .order("desc")
+      .take(500);
 
-    const unreadMessages = messages.filter(
+    const unreadMessages = recentMessages.filter(
       (m) => !m.readBy.includes(account._id)
     );
 

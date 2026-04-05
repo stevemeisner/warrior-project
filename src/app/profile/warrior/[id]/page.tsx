@@ -11,6 +11,17 @@ import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { GradientHeader, ContentPanel } from "@/components/gradient-header";
 
 function WarriorDetailContent() {
@@ -77,10 +88,6 @@ function WarriorDetailContent() {
   };
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this warrior? This action cannot be undone.")) {
-      return;
-    }
-
     try {
       await deleteWarrior({ warriorId: warriorId as any });
       toast.success("Warrior deleted");
@@ -177,9 +184,25 @@ function WarriorDetailContent() {
               {isOwner && (
                 <div className="flex gap-2 pt-4 border-t">
                   <Button onClick={() => setIsEditing(true)}>Edit Warrior</Button>
-                  <Button variant="destructive" onClick={handleDelete}>
-                    Delete
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive">Delete</Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete warrior?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete this warrior and all associated status updates. This cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               )}
             </CardContent>

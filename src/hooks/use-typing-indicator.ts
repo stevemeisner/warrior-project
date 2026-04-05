@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -38,6 +38,13 @@ export function useTypingIndicator(conversationId: string | null) {
       clearTyping({ conversationId: conversationId as Id<"conversations"> });
     }, TYPING_DEBOUNCE_MS);
   }, [conversationId, setTyping, clearTyping]);
+
+  // Clean up timeout on unmount to prevent firing after component is gone
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   const stopTyping = useCallback(() => {
     if (!conversationId) return;

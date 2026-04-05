@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { WarriorList } from "@/components/warrior-card";
@@ -69,8 +70,13 @@ function DashboardContent() {
   }
 
   // No account exists - redirect to onboarding
+  useEffect(() => {
+    if (account === null) {
+      router.push("/onboarding");
+    }
+  }, [account, router]);
+
   if (account === null) {
-    router.push("/onboarding");
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">

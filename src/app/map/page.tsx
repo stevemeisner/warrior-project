@@ -88,7 +88,12 @@ function MapContent() {
   const warriorFeatures: WarriorPoint[] = useMemo(() => {
     if (!warriors) return [];
     return warriors
-      .filter((w) => w.account?.location?.latitude != null && w.account?.location?.longitude != null)
+      .filter((w) => {
+        const lat = w.account?.location?.latitude;
+        const lng = w.account?.location?.longitude;
+        // Filter out null coordinates and 0,0 sentinel (no geocoding yet)
+        return lat != null && lng != null && !(lat === 0 && lng === 0);
+      })
       .map((w) => ({
         type: "Feature" as const,
         geometry: {
@@ -210,9 +215,10 @@ function MapContent() {
 
     clusters.forEach((feature) => {
       const [lng, lat] = feature.geometry.coordinates;
+      const props = feature.properties as WarriorPoint["properties"];
       const key = feature.properties.cluster
-        ? `cluster-${feature.properties.cluster_id}`
-        : `warrior-${(feature.properties as WarriorPoint["properties"]).warriorId}`;
+        ? `cluster-${feature.properties.cluster_id}-${feature.properties.point_count}`
+        : `warrior-${props.warriorId}-${props.status}`;
 
       nextKeys.add(key);
 
@@ -281,8 +287,22 @@ function MapContent() {
         el.addEventListener("mouseleave", () => { el.style.transform = "scale(1)"; });
 
         el.addEventListener("click", () => {
-          const warrior = warriors?.find((w) => w._id === props.warriorId);
-          if (warrior) setSelectedWarrior(warrior);
+          // Look up current warrior data to avoid stale closure
+          const current = warriors?.find((w) => w._id === props.warriorId);
+          if (current) {
+            setSelectedWarrior(current);
+          } else {
+            // Fallback to props from the GeoJSON feature
+            setSelectedWarrior({
+              _id: props.warriorId,
+              name: props.name,
+              currentStatus: props.status,
+              condition: props.condition,
+              profilePhoto: props.profilePhoto,
+              accountId: props.accountId,
+              account: { location: { city: props.city, state: props.state } },
+            });
+          }
         });
 
         const marker = new mapboxgl.Marker(el).setLngLat([lng, lat]).addTo(map.current!);

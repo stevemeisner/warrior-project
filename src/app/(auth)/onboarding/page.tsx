@@ -177,11 +177,14 @@ export default function OnboardingPage() {
     setError(null);
 
     try {
-      // Only save city/state text — real lat/lng must come from geocoding or manual map pin later
+      // Save city/state text only — use 0,0 as sentinel coordinates.
+      // Real lat/lng must come from geocoding or manual map pin later.
+      // The map page filters out warriors without valid coordinates,
+      // so these won't appear on the map until real coords are set.
       await updateAccount({
         location: {
-          latitude: 39.8283, // Approximate US center as placeholder
-          longitude: -98.5795,
+          latitude: 0,
+          longitude: 0,
           city: city.trim() || undefined,
           state: state.trim() || undefined,
         },

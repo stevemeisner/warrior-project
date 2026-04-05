@@ -161,7 +161,7 @@ function MessagesContent() {
                               "h-11 w-11 ring-2 transition-all",
                               isSelected ? "ring-primary/30" : "ring-transparent"
                             )}>
-                              <AvatarImage src={otherParticipant?.profilePhoto} />
+                              <AvatarImage src={otherParticipant?.profilePhoto} alt={otherParticipant?.name ?? ""} />
                               <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-xs font-semibold">
                                 {initials}
                               </AvatarFallback>
@@ -228,7 +228,7 @@ function MessagesContent() {
                         .slice(0, 2) || "?";
                       return (
                         <Avatar className="h-9 w-9 ring-2 ring-primary/20 shrink-0">
-                          <AvatarImage src={participant?.profilePhoto} />
+                          <AvatarImage src={participant?.profilePhoto} alt={participant?.name ?? ""} />
                           <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-xs font-semibold">
                             {initials}
                           </AvatarFallback>

@@ -201,7 +201,7 @@ function SearchContent() {
                   {results.threads.map((thread: any) => {
                     const cat = categoryColors[thread.category];
                     return (
-                      <Link key={thread._id} href="/community">
+                      <Link key={thread._id} href={`/community?thread=${thread._id}`}>
                         <Card className="card-hover rounded-2xl border-0 shadow-sm">
                           <CardContent className="py-3 px-4">
                             <div className="flex items-start justify-between gap-2">

@@ -271,6 +271,15 @@ export const deleteThread = mutation({
       await ctx.db.delete(comment._id);
     }
 
+    // Delete thread views
+    const views = await ctx.db
+      .query("threadViews")
+      .withIndex("by_thread_and_account", (q) => q.eq("threadId", args.threadId))
+      .collect();
+    for (const view of views) {
+      await ctx.db.delete(view._id);
+    }
+
     // Delete the thread
     await ctx.db.delete(args.threadId);
 
@@ -357,6 +366,17 @@ export const addComment = mutation({
       throw new Error("This thread is locked");
     }
 
+    // Validate parentId belongs to this thread
+    if (args.parentId) {
+      const parentComment = await ctx.db.get(args.parentId);
+      if (!parentComment) {
+        throw new Error("Parent comment not found");
+      }
+      if (parentComment.threadId !== args.threadId) {
+        throw new Error("Parent comment does not belong to this thread");
+      }
+    }
+
     if (args.content.length > 5000) {
       throw new Error("Comment must be 5,000 characters or less");
     }
@@ -426,6 +446,12 @@ export const updateComment = mutation({
 
     if (comment.authorId !== account._id) {
       throw new Error("Not authorized to update this comment");
+    }
+
+    // Check if the parent thread is locked
+    const thread = await ctx.db.get(comment.threadId);
+    if (thread?.isLocked) {
+      throw new Error("Cannot edit a comment on a locked thread");
     }
 
     if (args.content.length > 5000) {

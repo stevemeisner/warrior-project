@@ -113,6 +113,32 @@ export const getTypingUsers = query({
 
     if (!account) return [];
 
+    // Verify the user is a participant or authorized caregiver
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation) return [];
+
+    let hasAccess = conversation.participants.includes(account._id);
+    if (!hasAccess) {
+      for (const participantId of conversation.participants) {
+        const caregiverRelation = await ctx.db
+          .query("caregivers")
+          .withIndex("by_caregiver", (q) => q.eq("caregiverAccountId", account._id))
+          .filter((q) => q.eq(q.field("accountId"), participantId))
+          .first();
+        if (
+          caregiverRelation?.inviteStatus === "accepted" &&
+          conversation.caregiverAccess &&
+          (caregiverRelation.permissions === "canMessage" ||
+            caregiverRelation.permissions === "canUpdate" ||
+            caregiverRelation.permissions === "fullAccess")
+        ) {
+          hasAccess = true;
+          break;
+        }
+      }
+    }
+    if (!hasAccess) return [];
+
     const now = Date.now();
 
     const indicators = await ctx.db

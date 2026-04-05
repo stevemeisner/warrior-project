@@ -69,18 +69,33 @@ describe("getAccount", () => {
 
   it("returns null for nonexistent account", async () => {
     const t = convexTest(schema, modules);
-    const { asUser, accountId } = await createAccount(t);
+    const { accountId } = await createAccount(t);
 
-    // Delete the account to create an invalid ID scenario
-    // Instead, we'll use a fresh account and query a different one
-    // Actually, let's just test with a valid query that returns null
+    // Delete the account so the ID becomes invalid
+    await t.run(async (ctx) => {
+      await ctx.db.delete(accountId);
+    });
+
     const result = await t.query(api.accounts.getAccount, {
       accountId,
     });
 
-    // Unauthenticated still gets public fields
+    expect(result).toBeNull();
+  });
+
+  it("returns public fields for unauthenticated viewer", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId } = await createAccount(t, { name: "Alice" });
+
+    const result = await t.query(api.accounts.getAccount, {
+      accountId,
+    });
+
     expect(result).not.toBeNull();
-    expect(result!.name).toBeDefined();
+    expect(result!.name).toBe("Alice");
+    // Unauthenticated viewer gets public fields only
+    expect(result).not.toHaveProperty("email");
+    expect(result).not.toHaveProperty("authId");
   });
 
   it("respects showLocation privacy setting", async () => {
@@ -276,6 +291,80 @@ describe("updateNotificationPreferences", () => {
         emailStatusChanges: false,
       }),
     ).rejects.toThrow("Not authenticated");
+  });
+});
+
+describe("completeOnboarding", () => {
+  it("sets onboardingComplete to true", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId, asUser } = await createAccount(t);
+
+    // Verify it starts as undefined
+    const before = await t.run(async (ctx) => ctx.db.get(accountId));
+    expect(before!.onboardingComplete).toBeUndefined();
+
+    await asUser.mutation(api.accounts.completeOnboarding);
+
+    const after = await t.run(async (ctx) => ctx.db.get(accountId));
+    expect(after!.onboardingComplete).toBe(true);
+  });
+
+  it("rejects unauthenticated users", async () => {
+    const t = convexTest(schema, modules);
+
+    await expect(
+      t.mutation(api.accounts.completeOnboarding),
+    ).rejects.toThrow("Not authenticated");
+  });
+});
+
+describe("createAccount validation", () => {
+  it("rejects invalid email format", async () => {
+    const t = convexTest(schema, modules);
+
+    const authUserId = await t.run(async (ctx) => {
+      return await ctx.db.insert("users", {});
+    });
+    const sessionId = await t.run(async (ctx) => {
+      return await ctx.db.insert("authSessions", {
+        userId: authUserId,
+        expirationTime: Date.now() + 1000 * 60 * 60 * 24,
+      });
+    });
+    const asUser = t.withIdentity({ subject: `${authUserId}|${sessionId}` });
+
+    await expect(
+      asUser.mutation(api.accounts.createAccount, {
+        email: "not_an_email",
+        name: "Test",
+        role: "family",
+        authProvider: "email",
+      }),
+    ).rejects.toThrow("Invalid email address");
+  });
+
+  it("rejects name over 100 characters", async () => {
+    const t = convexTest(schema, modules);
+
+    const authUserId = await t.run(async (ctx) => {
+      return await ctx.db.insert("users", {});
+    });
+    const sessionId = await t.run(async (ctx) => {
+      return await ctx.db.insert("authSessions", {
+        userId: authUserId,
+        expirationTime: Date.now() + 1000 * 60 * 60 * 24,
+      });
+    });
+    const asUser = t.withIdentity({ subject: `${authUserId}|${sessionId}` });
+
+    await expect(
+      asUser.mutation(api.accounts.createAccount, {
+        email: "test@example.com",
+        name: "A".repeat(101),
+        role: "family",
+        authProvider: "email",
+      }),
+    ).rejects.toThrow("Name must be 100 characters or less");
   });
 });
 
