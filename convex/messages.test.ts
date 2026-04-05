@@ -755,3 +755,107 @@ describe("getUnreadCount", () => {
     expect(count).toBe(0);
   });
 });
+
+// ─── C1: Block-prevents-messaging ───────────────────────────────────────────
+
+describe("block prevents messaging", () => {
+  it("blocked user cannot start conversation with the user who blocked them", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId: aliceId } = await createAccount(t, { name: "Alice" });
+    const { accountId: bobId, asUser: asBob } = await createAccount(t, { name: "Bob" });
+
+    // Alice blocks Bob
+    await t.run(async (ctx) => {
+      await ctx.db.insert("blockedUsers", {
+        blockerId: aliceId,
+        blockedId: bobId,
+        createdAt: Date.now(),
+      });
+    });
+
+    // Bob (blocked) tries to start a conversation with Alice (blocker)
+    await expect(
+      asBob.mutation(api.messages.startConversation, {
+        participantIds: [aliceId],
+      })
+    ).rejects.toThrow("Cannot start a conversation with this user");
+  });
+
+  it("blocker cannot start conversation with blocked user", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId: aliceId, asUser: asAlice } = await createAccount(t, { name: "Alice" });
+    const { accountId: bobId } = await createAccount(t, { name: "Bob" });
+
+    // Alice blocks Bob
+    await t.run(async (ctx) => {
+      await ctx.db.insert("blockedUsers", {
+        blockerId: aliceId,
+        blockedId: bobId,
+        createdAt: Date.now(),
+      });
+    });
+
+    // Alice (blocker) tries to start a conversation with Bob (blocked)
+    await expect(
+      asAlice.mutation(api.messages.startConversation, {
+        participantIds: [bobId],
+      })
+    ).rejects.toThrow("Cannot start a conversation with this user");
+  });
+
+  it("blocked user cannot sendMessage in conversation with blocker", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId: aliceId } = await createAccount(t, { name: "Alice" });
+    const { accountId: bobId, asUser: asBob } = await createAccount(t, { name: "Bob" });
+
+    // Create conversation before the block
+    const { conversationId } = await createConversation(t, {
+      participants: [aliceId, bobId],
+    });
+
+    // Alice blocks Bob
+    await t.run(async (ctx) => {
+      await ctx.db.insert("blockedUsers", {
+        blockerId: aliceId,
+        blockedId: bobId,
+        createdAt: Date.now(),
+      });
+    });
+
+    // Bob (blocked) tries to send a message in the conversation
+    await expect(
+      asBob.mutation(api.messages.sendMessage, {
+        conversationId,
+        content: "Hello!",
+      })
+    ).rejects.toThrow("Cannot send messages in this conversation");
+  });
+
+  it("blocker cannot sendMessage in conversation with blocked user", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId: aliceId, asUser: asAlice } = await createAccount(t, { name: "Alice" });
+    const { accountId: bobId } = await createAccount(t, { name: "Bob" });
+
+    // Create conversation before the block
+    const { conversationId } = await createConversation(t, {
+      participants: [aliceId, bobId],
+    });
+
+    // Alice blocks Bob
+    await t.run(async (ctx) => {
+      await ctx.db.insert("blockedUsers", {
+        blockerId: aliceId,
+        blockedId: bobId,
+        createdAt: Date.now(),
+      });
+    });
+
+    // Alice (blocker) tries to send a message in the conversation
+    await expect(
+      asAlice.mutation(api.messages.sendMessage, {
+        conversationId,
+        content: "Hello!",
+      })
+    ).rejects.toThrow("Cannot send messages in this conversation");
+  });
+});

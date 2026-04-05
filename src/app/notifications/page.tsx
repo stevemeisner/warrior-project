@@ -57,7 +57,7 @@ function NotificationsContent() {
     } else if (notification.type === "statusChange" && notification.relatedWarriorId) {
       router.push(`/profile/warrior/${notification.relatedWarriorId}`);
     } else if (notification.type === "caregiverInvite") {
-      router.push("/settings");
+      router.push("/caregivers");
     } else if (notification.type === "supportRequest" && notification.relatedAccountId) {
       router.push(`/profile/${notification.relatedAccountId}`);
     }

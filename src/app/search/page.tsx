@@ -160,7 +160,7 @@ function SearchContent() {
                 </p>
                 <div className="space-y-2">
                   {results.warriors.map((warrior: any) => (
-                    <Link key={warrior._id} href={`/profile/${warrior.accountId}`}>
+                    <Link key={warrior._id} href={`/profile/warrior/${warrior._id}`}>
                       <Card className="card-hover rounded-2xl border-0 shadow-sm">
                         <CardContent className="flex items-center gap-3 py-3 px-4">
                           <Avatar className="h-11 w-11">

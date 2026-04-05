@@ -348,6 +348,16 @@ export const deleteWarrior = mutation({
       await ctx.db.patch(sr._id, { warriorId: undefined });
     }
 
+    // Delete orphaned notifications referencing this warrior
+    const notifications = await ctx.db
+      .query("notifications")
+      .withIndex("by_relatedWarrior", (q) => q.eq("relatedWarriorId", args.warriorId))
+      .collect();
+
+    for (const notification of notifications) {
+      await ctx.db.delete(notification._id);
+    }
+
     // Delete the warrior
     await ctx.db.delete(args.warriorId);
 
@@ -363,7 +373,7 @@ export const getPublicWarriors = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const limit = args.limit || 100;
+    const limit = Math.min(args.limit || 100, 500);
     const userId = await auth.getUserId(ctx);
 
     // Always include public warriors

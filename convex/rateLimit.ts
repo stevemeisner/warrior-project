@@ -52,11 +52,8 @@ export async function checkRateLimit(
     case "addComment": {
       const comments = await ctx.db
         .query("comments")
-        .filter((q) =>
-          q.and(
-            q.eq(q.field("authorId"), accountId),
-            q.gte(q.field("createdAt"), windowStart)
-          )
+        .withIndex("by_author_and_created", (q) =>
+          q.eq("authorId", accountId).gte("createdAt", windowStart)
         )
         .take(config.maxActions + 1);
       count = comments.length;

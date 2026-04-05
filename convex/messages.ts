@@ -275,9 +275,21 @@ export const startConversation = mutation({
     }
 
     const conversationType = allParticipants.length > 2 ? "group" : "dm";
-    const dmKey = conversationType === "dm"
-      ? [...allParticipants].sort().join("_")
-      : undefined;
+    const sortedIds = [...allParticipants].sort();
+    const dmKey = conversationType === "dm" ? sortedIds.join("_") : undefined;
+    const groupKey = conversationType === "group" ? sortedIds.join("_") : undefined;
+
+    // Check for existing group conversation with same participants
+    if (groupKey) {
+      const existingGroup = await ctx.db
+        .query("conversations")
+        .withIndex("by_groupKey", (q) => q.eq("groupKey", groupKey))
+        .first();
+
+      if (existingGroup) {
+        return existingGroup._id;
+      }
+    }
 
     const now = Date.now();
     const conversationId = await ctx.db.insert("conversations", {
@@ -285,6 +297,7 @@ export const startConversation = mutation({
       type: conversationType,
       name: conversationType === "group" ? args.name : undefined,
       dmKey,
+      groupKey,
       caregiverAccess: args.caregiverAccess ?? true,
       lastMessageAt: now,
       createdAt: now,
@@ -467,6 +480,38 @@ export const sendMessage = mutation({
             senderName: account.name,
             preview,
           });
+        }
+      }
+    }
+
+    // Send email to caregivers with message access
+    if (conversation.caregiverAccess) {
+      for (const participantId of conversation.participants) {
+        const caregiverRelations = await ctx.db
+          .query("caregivers")
+          .withIndex("by_account", (q) => q.eq("accountId", participantId))
+          .filter((q) => q.eq(q.field("inviteStatus"), "accepted"))
+          .collect();
+
+        for (const rel of caregiverRelations) {
+          if (
+            rel.caregiverAccountId !== account._id &&
+            (rel.permissions === "canMessage" ||
+              rel.permissions === "canUpdate" ||
+              rel.permissions === "fullAccess")
+          ) {
+            const caregiverAccount = await ctx.db.get(rel.caregiverAccountId);
+            if (
+              caregiverAccount?.email &&
+              (caregiverAccount.notificationPreferences?.emailNewMessages ?? true)
+            ) {
+              await ctx.scheduler.runAfter(0, internal.email.sendNewMessageEmail, {
+                toEmail: caregiverAccount.email,
+                senderName: account.name,
+                preview,
+              });
+            }
+          }
         }
       }
     }

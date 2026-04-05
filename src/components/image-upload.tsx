@@ -84,7 +84,7 @@ export function ImageUpload({
   return (
     <div className="relative group inline-block">
       <Avatar className={sizeClasses[size]}>
-        <AvatarImage src={currentImageUrl} />
+        <AvatarImage src={currentImageUrl} alt={fallbackText} />
         <AvatarFallback className="bg-primary/15 text-primary font-semibold">
           {fallbackText}
         </AvatarFallback>

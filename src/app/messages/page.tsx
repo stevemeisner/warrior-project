@@ -22,8 +22,8 @@ function MessagesContent() {
   const toAccountId = searchParams.get("to");
 
   const conversationsData = useQuery(api.messages.getMyConversations, {});
-  const conversations = conversationsData && !Array.isArray(conversationsData)
-    ? conversationsData.conversations
+  const conversations = conversationsData
+    ? (Array.isArray(conversationsData) ? conversationsData : conversationsData.conversations)
     : undefined;
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const selectedConversation = useQuery(
@@ -75,6 +75,13 @@ function MessagesContent() {
 
     handleToParameter();
   }, [toAccountId, conversations, markAsRead, startConversation, router]);
+
+  // Reset handled flag when toAccountId changes so new ?to= params are processed
+  useEffect(() => {
+    if (toAccountId) {
+      hasHandledToParam.current = false;
+    }
+  }, [toAccountId]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {

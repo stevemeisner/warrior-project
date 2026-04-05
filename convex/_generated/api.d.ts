@@ -14,6 +14,7 @@ import type * as blockedUsers from "../blockedUsers.js";
 import type * as caregivers from "../caregivers.js";
 import type * as crons from "../crons.js";
 import type * as email from "../email.js";
+import type * as emailTemplates from "../emailTemplates.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
 import type * as moderation from "../moderation.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   caregivers: typeof caregivers;
   crons: typeof crons;
   email: typeof email;
+  emailTemplates: typeof emailTemplates;
   http: typeof http;
   messages: typeof messages;
   moderation: typeof moderation;

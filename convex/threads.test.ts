@@ -197,6 +197,29 @@ describe("createThread", () => {
       })
     ).rejects.toThrow("Not authenticated");
   });
+
+  it("throws rate limit error after 5 threads in 5 minutes", async () => {
+    const t = convexTest(schema, modules);
+    const { asUser } = await createAccount(t, { name: "Alice" });
+
+    // Create 5 threads (the maximum allowed per 5-minute window)
+    for (let i = 1; i <= 5; i++) {
+      await asUser.mutation(api.threads.createThread, {
+        title: `Thread ${i}`,
+        content: `Content ${i}`,
+        category: "general",
+      });
+    }
+
+    // The 6th thread should be rejected by the rate limiter
+    await expect(
+      asUser.mutation(api.threads.createThread, {
+        title: "Thread 6",
+        content: "Content 6",
+        category: "general",
+      })
+    ).rejects.toThrow("Rate limit exceeded");
+  });
 });
 
 // ─── updateThread ────────────────────────────────────────────────────────────
@@ -692,5 +715,65 @@ describe("likeComment", () => {
     expect(result2.liked).toBe(false);
     comment = await t.run(async (ctx) => ctx.db.get(commentId));
     expect(comment!.likeCount).toBe(0);
+  });
+});
+
+// ─── Locked thread restrictions ─────────────────────────────────────────────
+
+describe("locked thread restrictions", () => {
+  it("author cannot updateThread on a locked thread", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId, asUser } = await createAccount(t, { name: "Alice" });
+    const { threadId } = await createThread(t, {
+      authorId: accountId,
+      title: "Original",
+      isLocked: true,
+    });
+
+    await expect(
+      asUser.mutation(api.threads.updateThread, {
+        threadId,
+        title: "Updated Title",
+      })
+    ).rejects.toThrow("locked");
+  });
+
+  it("author cannot deleteThread on a locked thread", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId, asUser } = await createAccount(t, { name: "Alice" });
+    const { threadId } = await createThread(t, {
+      authorId: accountId,
+      isLocked: true,
+    });
+
+    await expect(
+      asUser.mutation(api.threads.deleteThread, { threadId })
+    ).rejects.toThrow("locked");
+  });
+
+  it("author cannot updateComment on a locked thread", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId, asUser } = await createAccount(t, { name: "Alice" });
+    const { threadId } = await createThread(t, {
+      authorId: accountId,
+      isLocked: false,
+    });
+    const { commentId } = await createComment(t, {
+      threadId,
+      authorId: accountId,
+      content: "Original comment",
+    });
+
+    // Lock the thread after the comment was created
+    await t.run(async (ctx) => {
+      await ctx.db.patch(threadId, { isLocked: true });
+    });
+
+    await expect(
+      asUser.mutation(api.threads.updateComment, {
+        commentId,
+        content: "Edited comment",
+      })
+    ).rejects.toThrow("locked");
   });
 });

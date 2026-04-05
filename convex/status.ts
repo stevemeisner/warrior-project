@@ -158,10 +158,53 @@ export const getStatusHistory = query({
       .order("desc")
       .take(args.limit || 50);
 
+    // Check if viewer is a connection (caregiver relation in either direction)
+    let isConnection = false;
+    if (!hasFullAccess && userId) {
+      const viewerAccount = await ctx.db
+        .query("accounts")
+        .withIndex("by_authId", (q) => q.eq("authId", userId))
+        .first();
+
+      if (viewerAccount) {
+        // Check if viewer is a caregiver for the warrior's owner
+        const asCaregiverForOwner = await ctx.db
+          .query("caregivers")
+          .withIndex("by_caregiver", (q) =>
+            q.eq("caregiverAccountId", viewerAccount._id)
+          )
+          .filter((q) =>
+            q.and(
+              q.eq(q.field("accountId"), warrior.accountId),
+              q.eq(q.field("inviteStatus"), "accepted")
+            )
+          )
+          .first();
+
+        // Check if warrior's owner is a caregiver for the viewer
+        const ownerAsCaregiverForViewer = await ctx.db
+          .query("caregivers")
+          .withIndex("by_caregiver", (q) =>
+            q.eq("caregiverAccountId", warrior.accountId)
+          )
+          .filter((q) =>
+            q.and(
+              q.eq(q.field("accountId"), viewerAccount._id),
+              q.eq(q.field("inviteStatus"), "accepted")
+            )
+          )
+          .first();
+
+        isConnection = !!(asCaregiverForOwner || ownerAsCaregiverForViewer);
+      }
+    }
+
     // If not owner/caregiver, filter by visibility
     const visibleUpdates = hasFullAccess
       ? statusUpdates
-      : statusUpdates.filter((u) => u.visibility === "public");
+      : statusUpdates.filter((u) =>
+          u.visibility === "public" || (isConnection && u.visibility === "connections")
+        );
 
     // Get updater info (dedup lookups)
     const uniqueUpdaterIds = [...new Set(visibleUpdates.map((u) => u.updatedBy))];

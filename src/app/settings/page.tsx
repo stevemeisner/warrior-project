@@ -56,12 +56,15 @@ function SettingsContent() {
       const currentCity = account?.location?.city || "";
       const currentState = account?.location?.state || "";
       if (profileCity !== currentCity || profileState !== currentState) {
-        updates.location = {
-          latitude: account?.location?.latitude || 0,
-          longitude: account?.location?.longitude || 0,
-          city: profileCity || undefined,
-          state: profileState || undefined,
-        };
+        // Only save location if we have real coordinates or a prior location
+        if (account?.location?.latitude || account?.location?.longitude) {
+          updates.location = {
+            latitude: account.location.latitude,
+            longitude: account.location.longitude,
+            city: profileCity || undefined,
+            state: profileState || undefined,
+          };
+        }
       }
       await updateAccount(updates);
       toast.success("Profile updated");

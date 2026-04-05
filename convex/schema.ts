@@ -177,12 +177,14 @@ export default defineSchema({
     name: v.optional(v.string()), // For group conversations
     caregiverAccess: v.boolean(), // Whether caregivers can see this conversation
     dmKey: v.optional(v.string()), // Sorted participant IDs for O(1) DM dedup lookup
+    groupKey: v.optional(v.string()), // Sorted participant IDs for group conversation dedup
     lastMessageAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_participant", ["participants"])
     .index("by_last_message", ["lastMessageAt"])
-    .index("by_dmKey", ["dmKey"]),
+    .index("by_dmKey", ["dmKey"])
+    .index("by_groupKey", ["groupKey"]),
 
   // Junction table for O(1) "my conversations" lookup
   conversationParticipants: defineTable({
@@ -253,7 +255,8 @@ export default defineSchema({
   })
     .index("by_thread", ["threadId"])
     .index("by_parent", ["parentId"])
-    .index("by_thread_and_created", ["threadId", "createdAt"]),
+    .index("by_thread_and_created", ["threadId", "createdAt"])
+    .index("by_author_and_created", ["authorId", "createdAt"]),
 
   // Notifications - in-app notification system
   notifications: defineTable({
@@ -274,7 +277,8 @@ export default defineSchema({
     .index("by_account", ["accountId"])
     .index("by_account_and_read", ["accountId", "isRead"])
     .index("by_account_and_created", ["accountId", "createdAt"])
-    .index("by_created", ["createdAt"]),
+    .index("by_created", ["createdAt"])
+    .index("by_relatedWarrior", ["relatedWarriorId"]),
 
   // Support requests - when families need help
   supportRequests: defineTable({

@@ -232,6 +232,31 @@ describe("reviewReport", () => {
     expect(report!.reviewedBy).toBe(admin.accountId);
   });
 
+  it("throws when reportId does not exist", async () => {
+    const t = convexTest(schema, modules);
+    const admin = await createAccount(t, { name: "Admin" });
+    await makeAdmin(t, admin.accountId);
+
+    // Fabricate a non-existent report ID by creating then deleting a report
+    const reporter = await createAccount(t, { name: "Reporter" });
+    const { threadId } = await createThread(t);
+    const reportId = await reporter.asUser.mutation(api.moderation.submitReport, {
+      targetType: "thread",
+      targetId: threadId,
+      reason: "Temp report",
+    });
+    await t.run(async (ctx) => {
+      await ctx.db.delete(reportId);
+    });
+
+    await expect(
+      admin.asUser.mutation(api.moderation.reviewReport, {
+        reportId,
+        status: "reviewed",
+      }),
+    ).rejects.toThrow("Report not found");
+  });
+
   it("marks report as dismissed for admin", async () => {
     const t = convexTest(schema, modules);
     const reporter = await createAccount(t, { name: "Reporter" });
@@ -416,7 +441,7 @@ describe("adminDeleteComment", () => {
 
     const { threadId } = await createThread(t, {
       authorId: author.accountId,
-      commentCount: 4,
+      commentCount: 0,
     });
 
     // Parent comment

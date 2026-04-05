@@ -120,6 +120,30 @@ describe("createSupportRequest", () => {
     ).rejects.toThrow("Description must be 5000 characters or less");
   });
 
+  it("throws on 4th request within rate limit window", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId, asUser } = await createAccount(t, { role: "family" });
+    const { warriorId } = await createWarrior(t, { accountId });
+
+    // First 3 requests should succeed (limit is 3 per hour)
+    for (let i = 0; i < 3; i++) {
+      await asUser.mutation(api.supportRequests.createSupportRequest, {
+        warriorId,
+        helpTypes: ["meals"],
+        description: `Request ${i + 1}`,
+      });
+    }
+
+    // 4th request should be rate limited
+    await expect(
+      asUser.mutation(api.supportRequests.createSupportRequest, {
+        warriorId,
+        helpTypes: ["meals"],
+        description: "Request 4",
+      })
+    ).rejects.toThrow("Rate limit exceeded");
+  });
+
   it("throws when warrior is not owned by the family", async () => {
     const t = convexTest(schema, modules);
     const { asUser } = await createAccount(t, { role: "family" });

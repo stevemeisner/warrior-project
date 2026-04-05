@@ -141,7 +141,7 @@ export function MapWarriorListPanel({
     return (
       <div
         className={cn(
-          "md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm rounded-t-2xl shadow-[0_-4px_24px_rgba(26,122,106,0.12)] border-t border-white/60 transition-all duration-300 z-20",
+          "md:hidden fixed bottom-16 left-0 right-0 bg-white/95 backdrop-blur-sm rounded-t-2xl shadow-[0_-4px_24px_rgba(26,122,106,0.12)] border-t border-white/60 transition-all duration-300 z-20",
           isMobileExpanded ? "max-h-[70vh]" : "max-h-48"
         )}
       >
