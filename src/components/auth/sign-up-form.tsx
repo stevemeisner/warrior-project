@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +38,6 @@ const roleOptions: RoleOption[] = [
 export function SignUpForm() {
   const router = useRouter();
   const { signIn } = useAuthActions();
-  const createAccount = useMutation(api.accounts.createAccount);
   const [step, setStep] = useState<"role" | "details">("role");
   const [role, setRole] = useState<AccountRole | null>(null);
   const [name, setName] = useState("");
@@ -59,6 +56,11 @@ export function SignUpForm() {
     e.preventDefault();
     setError(null);
 
+    if (!name.trim()) {
+      setError("Please enter your name");
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
@@ -72,35 +74,23 @@ export function SignUpForm() {
     setIsLoading(true);
 
     try {
+      // The account record is created by /onboarding once the auth token is
+      // live on the client. Calling createAccount here races the token and
+      // fails with "Not authenticated". pendingRole is the same handoff the
+      // Google flow uses, so the user is never asked for their role twice.
+      sessionStorage.setItem("pendingRole", role!);
+      sessionStorage.setItem("pendingAuthProvider", "email");
       await signIn("password", {
         email,
         password,
-        name,
-        role,
+        name: name.trim(),
         flow: "signUp",
       });
-
-      // Create the account record after successful signup
-      try {
-        await createAccount({
-          email,
-          name,
-          role: role!,
-          authProvider: "email",
-        });
-      } catch (accountErr) {
-        // Account may already exist (created by callback), ignore this error
-        const errMessage = accountErr instanceof Error ? accountErr.message : "";
-        if (!errMessage.includes("already exists")) {
-          console.error("Failed to create account record:", accountErr);
-        }
-      }
-
-      // Redirect to dashboard after successful signup
-      router.push("/dashboard");
-    } catch (err) {
+      router.push("/onboarding");
+    } catch {
+      sessionStorage.removeItem("pendingRole");
+      sessionStorage.removeItem("pendingAuthProvider");
       setError("Failed to create account. This email may already be registered.");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -116,8 +106,9 @@ export function SignUpForm() {
     try {
       // Store role in session for after OAuth redirect
       sessionStorage.setItem("pendingRole", role);
+      sessionStorage.setItem("pendingAuthProvider", "google");
       await signIn("google", { redirectTo: "/onboarding" });
-    } catch (err) {
+    } catch {
       setError("Failed to sign up with Google");
       setIsLoading(false);
     }

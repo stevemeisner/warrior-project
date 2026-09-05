@@ -37,8 +37,8 @@ const desktopNavItems = [
 function AuthenticatedNav() {
   const { signOut } = useAuthActions();
   const account = useQuery(api.accounts.getCurrentAccount);
-  const unreadMessages = useQuery(api.messages.getUnreadCount);
-  const unreadNotifications = useQuery(api.notifications.getUnreadCount);
+  const unreadMessages = useQuery(api.messages.getUnreadCount) ?? 0;
+  const unreadNotifications = useQuery(api.notifications.getUnreadCount) ?? 0;
   const pathname = usePathname();
 
   const initials = account?.name
@@ -75,7 +75,7 @@ function AuthenticatedNav() {
                 >
                   <item.Icon className="size-4" />
                   <span>{item.label}</span>
-                  {item.href === "/messages" && unreadMessages && unreadMessages > 0 && (
+                  {item.href === "/messages" && unreadMessages > 0 && (
                     <span className="ml-1 px-1.5 py-0.5 text-xs bg-white text-primary rounded-full font-bold">
                       {unreadMessages}
                       <span className="sr-only"> unread messages</span>
@@ -95,7 +95,7 @@ function AuthenticatedNav() {
             <Link href="/notifications">
               <Button variant="ghost" size="icon-sm" className="relative text-white/70 hover:text-white hover:bg-white/10" aria-label="Notifications">
                 <Bell className="size-5" strokeWidth={1.75} />
-                {unreadNotifications && unreadNotifications > 0 && (
+                {unreadNotifications > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 h-4 w-4 text-[10px] bg-red-500 text-white rounded-full flex items-center justify-center font-bold">
                     {unreadNotifications}
                     <span className="sr-only"> unread notifications</span>
@@ -180,7 +180,7 @@ function AuthenticatedNav() {
                 )}
                 <item.Icon className={cn("size-5", isActive && "text-primary")} />
                 <span>{item.label}</span>
-                {item.href === "/messages" && unreadMessages && unreadMessages > 0 && (
+                {item.href === "/messages" && unreadMessages > 0 && (
                   <span className="absolute top-1 right-1/4 px-1 py-0.5 text-[10px] bg-red-500 text-white rounded-full min-w-[16px] text-center font-bold">
                     {unreadMessages}
                     <span className="sr-only"> unread messages</span>
@@ -203,7 +203,7 @@ function AuthenticatedNav() {
             <Link href="/notifications">
               <Button variant="ghost" size="icon-sm" className="relative text-white/70 hover:text-white hover:bg-white/10 size-9" aria-label="Notifications">
                 <Bell className="size-4" strokeWidth={1.75} />
-                {unreadNotifications && unreadNotifications > 0 && (
+                {unreadNotifications > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 text-[9px] bg-red-500 text-white rounded-full flex items-center justify-center font-bold">
                     {unreadNotifications}
                   </span>
@@ -311,6 +311,13 @@ function NavSkeleton() {
 }
 
 export function Navigation() {
+  const pathname = usePathname();
+  // Onboarding is a focused, one-step-per-screen wizard; app chrome would
+  // invite the user to wander off before their account record exists.
+  if (pathname.startsWith("/onboarding")) {
+    return null;
+  }
+
   return (
     <>
       <AuthLoading>

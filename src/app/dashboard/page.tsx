@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { toast } from "sonner";
 import { WarriorList } from "@/components/warrior-card";
 import { DashboardSkeleton } from "@/components/skeleton-loaders";
 import { Button } from "@/components/ui/button";
@@ -63,11 +65,13 @@ function DashboardContent() {
   const handleStatusChange = async (warriorId: string, status: WarriorStatus) => {
     try {
       await updateStatus({
-        warriorId: warriorId as any,
+        warriorId: warriorId as Id<"warriors">,
         status,
       });
+      toast.success("Status updated");
     } catch (error) {
       console.error("Failed to update status:", error);
+      toast.error("Couldn't update status. Please try again.");
     }
   };
 
@@ -277,9 +281,8 @@ function DashboardContent() {
                   _id: w._id.toString(),
                 }))}
                 onStatusChange={handleStatusChange}
-                onWarriorClick={(warrior) =>
-                  router.push(`/profile/warrior/${warrior._id}`)
-                }
+                linkToDetail
+                singleColumn
                 canEdit
               />
             </section>

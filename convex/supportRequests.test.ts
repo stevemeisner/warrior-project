@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, it, beforeEach } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
+import type { Id } from "./_generated/dataModel";
 import { modules } from "./test.setup";
 import {
   createAccount,
@@ -18,7 +19,7 @@ beforeEach(() => {
 async function insertSupportRequest(
   t: ReturnType<typeof convexTest>,
   opts: {
-    accountId: Parameters<typeof import("./_generated/dataModel").Id<"accounts">>[0] & string;
+    accountId: Id<"accounts">;
     warriorId?: string;
     helpTypes?: string[];
     description?: string;
@@ -28,7 +29,7 @@ async function insertSupportRequest(
   const now = Date.now();
   return await t.run(async (ctx) => {
     return await ctx.db.insert("supportRequests", {
-      accountId: opts.accountId as any,
+      accountId: opts.accountId,
       warriorId: opts.warriorId as any,
       isActive: opts.isActive ?? true,
       helpTypes: opts.helpTypes ?? ["meals"],

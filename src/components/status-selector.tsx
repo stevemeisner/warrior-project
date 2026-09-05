@@ -1,7 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { statusIconMap } from "@/components/icons/status-icons";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export type WarriorStatus =
   | "thriving"
@@ -62,6 +73,8 @@ interface StatusSelectorProps {
   onStatusChange: (status: WarriorStatus) => void;
   disabled?: boolean;
   compact?: boolean;
+  /** Used in the "mark as feather" confirmation copy. */
+  warriorName?: string;
 }
 
 export function StatusSelector({
@@ -69,35 +82,83 @@ export function StatusSelector({
   onStatusChange,
   disabled = false,
   compact = false,
+  warriorName,
 }: StatusSelectorProps) {
+  const [confirmFeather, setConfirmFeather] = useState(false);
+
+  const select = (status: WarriorStatus) => {
+    if (status === currentStatus) return;
+    // "Feather" means the child has passed away. It must never be a slip of
+    // the thumb, so it always asks first.
+    if (status === "feather") {
+      setConfirmFeather(true);
+      return;
+    }
+    onStatusChange(status);
+  };
+
   return (
-    <div className={cn("flex flex-wrap", compact ? "gap-1.5" : "gap-2")}>
-      {statusOptions.map((option) => {
-        const Icon = statusIconMap[option.value];
-        return (
-          <button
-            key={option.value}
-            onClick={() => onStatusChange(option.value)}
-            disabled={disabled}
-            aria-pressed={currentStatus === option.value}
-            aria-label={`${option.label}: ${option.description}`}
-            className={cn(
-              "flex items-center gap-2 rounded-xl border-2 transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              compact ? "px-3 py-2 text-sm" : "px-4 py-3",
-              "min-h-[44px]",
-              currentStatus === option.value
-                ? "border-primary bg-primary/10"
-                : "border-transparent bg-muted hover:bg-muted/80",
-              disabled && "cursor-not-allowed opacity-50"
-            )}
-            title={option.description}
-          >
-            <Icon className={cn("size-5", option.colorClass)} />
-            {!compact && <span className="font-medium">{option.label}</span>}
-          </button>
-        );
-      })}
-    </div>
+    <>
+      <div
+        role="group"
+        aria-label="Update status"
+        className={cn("flex flex-wrap", compact ? "gap-1.5" : "gap-2")}
+      >
+        {statusOptions.map((option) => {
+          const Icon = statusIconMap[option.value];
+          const isCurrent = currentStatus === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => select(option.value)}
+              disabled={disabled}
+              aria-pressed={isCurrent}
+              aria-label={`${option.label}: ${option.description}`}
+              className={cn(
+                "flex items-center gap-2 rounded-xl border-2 transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                compact ? "px-2.5 py-1.5 text-sm" : "px-4 py-3",
+                "min-h-[44px]",
+                isCurrent
+                  ? "border-primary bg-primary/10"
+                  : "border-transparent bg-muted hover:bg-muted/80",
+                disabled && "cursor-not-allowed opacity-50"
+              )}
+              title={option.description}
+            >
+              <Icon className={cn("size-5 shrink-0", option.colorClass)} />
+              <span className={cn("font-medium", compact && "text-sm")}>{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <AlertDialog open={confirmFeather} onOpenChange={setConfirmFeather}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Mark {warriorName ?? "this warrior"} as a Feather?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              A Feather is a warrior who has passed away. Their profile stays
+              here to be remembered, and their community will be told gently.
+              You can change this later if it was a mistake.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Not now</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmFeather(false);
+                onStatusChange("feather");
+              }}
+            >
+              Yes, mark as Feather
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

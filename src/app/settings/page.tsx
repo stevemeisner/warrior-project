@@ -18,9 +18,10 @@ import {
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ShieldCheck, Bell, User, Ban } from "lucide-react";
+import { ShieldCheck, Bell, User, Ban, MapPin } from "lucide-react";
 import { ImageUpload } from "@/components/image-upload";
 import { GradientHeader, ContentPanel } from "@/components/gradient-header";
+import { geocodeCityState } from "@/lib/geocode";
 
 function SettingsContent() {
   const account = useQuery(api.accounts.getCurrentAccount);
@@ -47,28 +48,52 @@ function SettingsContent() {
   }, [account]);
 
   const handleSaveProfile = async () => {
+    if (!profileName.trim()) {
+      toast.error("Please enter your name");
+      return;
+    }
     setIsSavingProfile(true);
     try {
       const updates: Parameters<typeof updateAccount>[0] = {};
-      if (profileName !== (account?.name || "")) {
-        updates.name = profileName;
+      if (profileName.trim() !== (account?.name || "")) {
+        updates.name = profileName.trim();
       }
       const currentCity = account?.location?.city || "";
       const currentState = account?.location?.state || "";
-      if (profileCity !== currentCity || profileState !== currentState) {
-        // Only save location if we have real coordinates or a prior location
-        if (account?.location?.latitude || account?.location?.longitude) {
-          updates.location = {
-            latitude: account.location.latitude,
-            longitude: account.location.longitude,
-            city: profileCity || undefined,
-            state: profileState || undefined,
-          };
+      const city = profileCity.trim();
+      const state = profileState.trim();
+      let mapNotice: string | null = null;
+      if (city !== currentCity || state !== currentState) {
+        if (!city && !state) {
+          // Cleared: keep the row valid but off the map.
+          updates.location = { latitude: 0, longitude: 0 };
+        } else {
+          const geocoded = await geocodeCityState(city, state);
+          if (geocoded) {
+            updates.location = geocoded;
+          } else {
+            // Keep what they typed; the map skips the 0,0 sentinel.
+            updates.location = {
+              latitude: 0,
+              longitude: 0,
+              city: city || undefined,
+              state: state || undefined,
+            };
+            mapNotice = "We couldn't find that place on the map, so you won't appear there yet.";
+          }
         }
       }
+      if (Object.keys(updates).length === 0) {
+        toast.info("Nothing to save");
+        return;
+      }
       await updateAccount(updates);
-      toast.success("Profile updated");
-    } catch (error) {
+      if (mapNotice) {
+        toast.warning(mapNotice);
+      } else {
+        toast.success("Profile updated");
+      }
+    } catch {
       toast.error("Failed to update profile");
     } finally {
       setIsSavingProfile(false);
@@ -223,6 +248,17 @@ function SettingsContent() {
                 />
               </div>
             </div>
+            <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+              <MapPin className="size-4 shrink-0" aria-hidden="true" />
+              {account.location?.latitude || account.location?.longitude ? (
+                <>
+                  Shown on the map near {account.location.city || "your city"}
+                  {account.privacySettings?.showLocation === false && " (hidden by your privacy settings)"}.
+                </>
+              ) : (
+                "Add your city and state to appear on the community map."
+              )}
+            </p>
             <Button
               onClick={handleSaveProfile}
               disabled={isSavingProfile}

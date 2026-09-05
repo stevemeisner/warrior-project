@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { ArrowRight, ArrowLeft, MapPin, Shield, Check, Users, HeartHandshake } from "lucide-react";
+import { geocodeCityState } from "@/lib/geocode";
 
 type AccountRole = "family" | "caregiver";
 type OnboardingStep = "role" | "warrior" | "location" | "done";
@@ -42,6 +43,7 @@ const STEPS_CAREGIVER: OnboardingStep[] = ["role", "location", "done"];
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { isLoading: authLoading, isAuthenticated } = useConvexAuth();
   const authUser = useQuery(api.accounts.getAuthUserInfo);
   const existingAccount = useQuery(api.accounts.getCurrentAccount);
   const createAccount = useMutation(api.accounts.createAccount);
@@ -54,6 +56,12 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState<OnboardingStep>("role");
   const [selectedRole, setSelectedRole] = useState<AccountRole | null>(null);
   const [accountCreated, setAccountCreated] = useState(false);
+  // Role chosen on the signup page; read in an effect so SSR and the first
+  // client render agree.
+  const [pendingRole, setPendingRole] = useState<AccountRole | null>(null);
+  useEffect(() => {
+    setPendingRole(sessionStorage.getItem("pendingRole") as AccountRole | null);
+  }, []);
 
   // Warrior fields
   const [warriorName, setWarriorName] = useState("");
@@ -65,72 +73,81 @@ export default function OnboardingPage() {
   const [state, setState] = useState("");
 
   const isCreatingRef = useRef(false);
+  // The resume-from-existing-account logic must run exactly once. Every
+  // account write during the wizard (e.g. saving a location) re-emits
+  // `existingAccount`; re-running it would throw the user back to step one.
+  const initializedRef = useRef(false);
 
-  // If account already exists and onboarding is complete, redirect
+  // If account already exists: finished → dashboard, otherwise resume the wizard.
   useEffect(() => {
-    if (existingAccount === undefined) return;
-    if (existingAccount?.onboardingComplete) {
+    if (existingAccount === undefined || initializedRef.current) return;
+    if (!existingAccount) return;
+    initializedRef.current = true;
+    sessionStorage.removeItem("pendingRole");
+    sessionStorage.removeItem("pendingAuthProvider");
+    if (existingAccount.onboardingComplete) {
       router.push("/dashboard");
       return;
     }
-    // If account exists but onboarding not complete, resume where they left off
-    if (existingAccount && !existingAccount.onboardingComplete) {
-      setAccountCreated(true);
-      setSelectedRole(existingAccount.role as AccountRole);
-      if (existingAccount.role === "family") {
-        setCurrentStep("warrior");
-      } else {
-        setCurrentStep("location");
-      }
-    }
+    setAccountCreated(true);
+    setSelectedRole(existingAccount.role as AccountRole);
+    setCurrentStep(existingAccount.role === "family" ? "warrior" : "location");
   }, [existingAccount, router]);
 
-  // Handle pending role from signup page (for auto-creation via Google OAuth)
+  // Handle pending role from the signup page (email + Google flows both land here)
   useEffect(() => {
-    if (authUser === undefined || existingAccount === undefined) return;
+    if (authLoading || authUser === undefined || existingAccount === undefined) return;
     if (existingAccount) return; // Already handled above
-    if (!authUser) {
+    if (!isAuthenticated || !authUser) {
       router.push("/signup");
       return;
     }
 
-    const pendingRole = sessionStorage.getItem("pendingRole") as AccountRole | null;
-    if (pendingRole && !isCreatingRef.current) {
+    const role = sessionStorage.getItem("pendingRole") as AccountRole | null;
+    if (role && !isCreatingRef.current) {
       isCreatingRef.current = true;
-      handleCreateAccount(pendingRole);
+      handleCreateAccount(role);
     }
-  }, [authUser, existingAccount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, isAuthenticated, authUser, existingAccount]);
 
   const handleCreateAccount = async (role: AccountRole) => {
     if (!authUser || isSubmitting) return;
     setIsSubmitting(true);
     setError(null);
 
+    const pendingProvider = sessionStorage.getItem("pendingAuthProvider");
+    const authProvider =
+      pendingProvider === "google" || pendingProvider === "email"
+        ? pendingProvider
+        : authUser.image
+          ? "google"
+          : "email";
+
     try {
       await createAccount({
         email: authUser.email || "",
         name: authUser.name || authUser.email?.split("@")[0] || "User",
         role,
-        authProvider: authUser.image ? "google" : "email",
+        authProvider,
         profilePhoto: authUser.image || undefined,
       });
       sessionStorage.removeItem("pendingRole");
+      sessionStorage.removeItem("pendingAuthProvider");
+      initializedRef.current = true;
       setAccountCreated(true);
       setSelectedRole(role);
-
-      // Move to next step
-      if (role === "family") {
-        setCurrentStep("warrior");
-      } else {
-        setCurrentStep("location");
-      }
+      setCurrentStep(role === "family" ? "warrior" : "location");
     } catch (err) {
       const errMessage = err instanceof Error ? err.message : "";
       if (errMessage.includes("already exists")) {
         sessionStorage.removeItem("pendingRole");
+        sessionStorage.removeItem("pendingAuthProvider");
         router.push("/dashboard");
       } else {
         setError("Failed to create account. Please try again.");
+        setPendingRole(null);
+        sessionStorage.removeItem("pendingRole");
         isCreatingRef.current = false;
       }
     } finally {
@@ -177,12 +194,11 @@ export default function OnboardingPage() {
     setError(null);
 
     try {
-      // Save city/state text only — use 0,0 as sentinel coordinates.
-      // Real lat/lng must come from geocoding or manual map pin later.
-      // The map page filters out warriors without valid coordinates,
-      // so these won't appear on the map until real coords are set.
+      // Real coordinates put the family on the community map; if the place
+      // can't be resolved we keep the text and the 0,0 "not on map" sentinel.
+      const geocoded = await geocodeCityState(city, state);
       await updateAccount({
-        location: {
+        location: geocoded ?? {
           latitude: 0,
           longitude: 0,
           city: city.trim() || undefined,
@@ -190,7 +206,7 @@ export default function OnboardingPage() {
         },
       });
       setCurrentStep("done");
-    } catch (err) {
+    } catch {
       setError("Failed to set location. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -198,21 +214,31 @@ export default function OnboardingPage() {
   };
 
   const handleFinish = async () => {
-    await completeOnboarding();
-    router.push("/dashboard");
+    setIsSubmitting(true);
+    try {
+      await completeOnboarding();
+      router.push("/dashboard");
+    } catch {
+      setError("Something went wrong. Please try again.");
+      setIsSubmitting(false);
+    }
   };
 
   const steps = selectedRole === "family" ? STEPS_FAMILY : STEPS_CAREGIVER;
   const currentStepIndex = steps.indexOf(currentStep);
   const totalSteps = steps.length;
 
-  // Loading state
-  if (authUser === undefined || existingAccount === undefined) {
+  // Loading: auth token settling, queries in flight, or the account record
+  // being auto-created from the role chosen on the signup page.
+  const settingUp = existingAccount === null && !accountCreated && pendingRole !== null;
+  if (authLoading || authUser === undefined || existingAccount === undefined || settingUp) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
+        <div className="text-center" role="status" aria-live="polite">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">
+            {settingUp ? "Setting up your account…" : "Loading…"}
+          </p>
         </div>
       </div>
     );
@@ -429,10 +455,13 @@ export default function OnboardingPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={handleFinish} className="w-full gap-2" size="lg">
-                Go to Dashboard
-                <ArrowRight className="h-4 w-4" />
+              <Button onClick={handleFinish} disabled={isSubmitting} className="w-full gap-2" size="lg">
+                {isSubmitting ? "Opening your dashboard…" : "Go to Dashboard"}
+                {!isSubmitting && <ArrowRight className="h-4 w-4" />}
               </Button>
+              {error && (
+                <p className="text-sm text-destructive text-center mt-3">{error}</p>
+              )}
             </CardContent>
           </Card>
         )}

@@ -192,9 +192,7 @@ function ProfileContent() {
                   ...w,
                   _id: w._id.toString(),
                 }))}
-                onWarriorClick={(warrior) =>
-                  router.push(`/profile/warrior/${warrior._id}`)
-                }
+                linkToDetail
                 compact
               />
             </CardContent>
@@ -287,6 +285,7 @@ function ProfileContent() {
                               ...w,
                               _id: w._id.toString(),
                             }))}
+                            linkToDetail
                             compact
                           />
                         </div>

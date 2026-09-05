@@ -159,9 +159,7 @@ function PublicProfileContent() {
                 ...w,
                 _id: w._id.toString(),
               }))}
-              onWarriorClick={(warrior) => {
-                router.push(`/profile/warrior/${warrior._id}`);
-              }}
+              linkToDetail
             />
           </section>
         )}

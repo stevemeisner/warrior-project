@@ -219,6 +219,7 @@ function WarriorDetailContent() {
                   currentStatus={warrior.currentStatus as WarriorStatus}
                   onStatusChange={handleStatusChange}
                   disabled={isUpdatingStatus}
+                  warriorName={warrior.name}
                 />
               </CardContent>
             </Card>

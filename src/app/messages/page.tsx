@@ -12,7 +12,7 @@ import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { MessagesSkeleton } from "@/components/skeleton-loaders";
-import { MessageCircle, Send, Inbox } from "lucide-react";
+import { MessageCircle, Send, Inbox, Search } from "lucide-react";
 import { useTypingIndicator } from "@/hooks/use-typing-indicator";
 import { GradientHeader, ContentPanel } from "@/components/gradient-header";
 
@@ -210,9 +210,15 @@ function MessagesContent() {
                       <Inbox className="h-8 w-8 text-muted-foreground/50" />
                     </div>
                     <p className="font-heading font-semibold text-muted-foreground mb-1">No messages yet</p>
-                    <p className="text-sm text-muted-foreground/70">
-                      Visit a profile and send a message to get started
+                    <p className="text-sm text-muted-foreground/70 mb-4">
+                      Find a family or caregiver and say hello.
                     </p>
+                    <Link href="/search">
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <Search className="size-4" aria-hidden="true" />
+                        Find people
+                      </Button>
+                    </Link>
                   </div>
                 )}
               </div>
