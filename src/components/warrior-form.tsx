@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,7 +55,7 @@ export function WarriorForm({ warrior, onSuccess }: WarriorFormProps) {
     try {
       if (warrior) {
         await updateWarrior({
-          warriorId: warrior._id as any,
+          warriorId: warrior._id as Id<"warriors">,
           name,
           dateOfBirth: dateOfBirth || undefined,
           condition: condition || undefined,
@@ -100,8 +101,8 @@ export function WarriorForm({ warrior, onSuccess }: WarriorFormProps) {
                 fallbackText={warrior.name?.[0]?.toUpperCase() || "?"}
                 onUploadComplete={async (storageId) => {
                   await updateWarriorPhoto({
-                    warriorId: warrior._id as any,
-                    storageId: storageId as any,
+                    warriorId: warrior._id as Id<"warriors">,
+                    storageId: storageId as Id<"_storage">,
                   });
                 }}
                 size="lg"

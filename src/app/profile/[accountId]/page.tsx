@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import { WarriorList } from "@/components/warrior-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,10 +20,10 @@ function PublicProfileContent() {
   const router = useRouter();
   const accountId = params.accountId as string;
 
-  const account = useQuery(api.accounts.getAccount, { accountId: accountId as any });
+  const account = useQuery(api.accounts.getAccount, { accountId: accountId as Id<"accounts"> });
   const currentUser = useQuery(api.accounts.getCurrentAccount);
-  const warriors = useQuery(api.warriors.getWarriorsByAccount, { accountId: accountId as any });
-  const blockStatus = useQuery(api.blockedUsers.getBlockStatus, { accountId: accountId as any });
+  const warriors = useQuery(api.warriors.getWarriorsByAccount, { accountId: accountId as Id<"accounts"> });
+  const blockStatus = useQuery(api.blockedUsers.getBlockStatus, { accountId: accountId as Id<"accounts"> });
   const blockUser = useMutation(api.blockedUsers.blockUser);
   const unblockUser = useMutation(api.blockedUsers.unblockUser);
   const isBlockedByMe = blockStatus?.blockedByMe ?? false;
@@ -132,10 +133,10 @@ function PublicProfileContent() {
                   onClick={async () => {
                     try {
                       if (isBlockedByMe) {
-                        await unblockUser({ accountId: accountId as any });
+                        await unblockUser({ accountId: accountId as Id<"accounts"> });
                         toast.success("User unblocked");
                       } else {
-                        await blockUser({ accountId: accountId as any });
+                        await blockUser({ accountId: accountId as Id<"accounts"> });
                         toast.success("User blocked");
                       }
                     } catch (error) {

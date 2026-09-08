@@ -126,7 +126,7 @@ function SearchContent() {
                   People
                 </p>
                 <div className="space-y-2">
-                  {results.accounts.map((account: any) => (
+                  {results.accounts.map((account) => (
                     <Link key={account._id} href={`/profile/${account._id}`}>
                       <Card className="card-hover rounded-2xl border-0 shadow-sm">
                         <CardContent className="flex items-center gap-3 py-3 px-4">
@@ -159,7 +159,7 @@ function SearchContent() {
                   Warriors
                 </p>
                 <div className="space-y-2">
-                  {results.warriors.map((warrior: any) => (
+                  {results.warriors.map((warrior) => (
                     <Link key={warrior._id} href={`/profile/warrior/${warrior._id}`}>
                       <Card className="card-hover rounded-2xl border-0 shadow-sm">
                         <CardContent className="flex items-center gap-3 py-3 px-4">
@@ -198,7 +198,7 @@ function SearchContent() {
                   Discussions
                 </p>
                 <div className="space-y-2">
-                  {results.threads.map((thread: any) => {
+                  {results.threads.map((thread) => {
                     const cat = categoryColors[thread.category];
                     return (
                       <Link key={thread._id} href={`/community?thread=${thread._id}`}>

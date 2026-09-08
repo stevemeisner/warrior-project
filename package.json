@@ -8,10 +8,13 @@
     "dev:convex": "convex dev",
     "build": "convex deploy --cmd 'next build'",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint src convex",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck:convex": "tsc --noEmit -p convex/tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "gate": "npm run typecheck:convex && npm run typecheck && npm run lint && npm run test && next build"
   },
   "dependencies": {
     "@auth/core": "^0.37.0",

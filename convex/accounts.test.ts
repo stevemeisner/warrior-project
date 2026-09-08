@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, it, beforeEach } from "vitest";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
+import type { Doc } from "./_generated/dataModel";
 import { modules } from "./test.setup";
 import { createAccount, resetFactoryCounter } from "./test.factories";
 
@@ -39,7 +40,7 @@ describe("getAccount", () => {
       email: "alice@example.com",
     });
 
-    const result = await asUser.query(api.accounts.getAccount, { accountId }) as any;
+    const result = (await asUser.query(api.accounts.getAccount, { accountId })) as Doc<"accounts">;
     expect(result).not.toBeNull();
     expect(result.email).toBe("alice@example.com");
     expect(result.privacySettings).toBeDefined();
@@ -378,12 +379,12 @@ describe("getAccountByEmail (internal)", () => {
 
     const result = await t.query(internal.accounts.getAccountByEmail, {
       email: "alice@example.com",
-    }) as any;
+    });
 
     expect(result).not.toBeNull();
-    expect(result.name).toBe("Alice");
-    expect(result.email).toBe("alice@example.com");
-    expect(result._id).toBeDefined();
+    expect(result!.name).toBe("Alice");
+    expect(result!.email).toBe("alice@example.com");
+    expect(result!._id).toBeDefined();
   });
 
   it("returns only selected fields", async () => {
@@ -395,7 +396,7 @@ describe("getAccountByEmail (internal)", () => {
 
     const result = await t.query(internal.accounts.getAccountByEmail, {
       email: "alice@example.com",
-    }) as any;
+    });
 
     // Should not leak sensitive fields
     expect(result).not.toHaveProperty("authId");

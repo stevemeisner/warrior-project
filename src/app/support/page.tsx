@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,9 @@ const helpTypeLabels: Record<string, { label: string; icon: React.ReactNode }> =
   other: { label: "Other", icon: <ClipboardList className="size-4" /> },
 };
 
+/** Sentinel for "no specific warrior" — Radix reserves "" for a cleared Select. */
+const GENERAL_REQUEST = "general";
+
 function SupportContent() {
   const account = useQuery(api.accounts.getCurrentAccount);
   const myRequests = useQuery(api.supportRequests.getMySupportRequests, {});
@@ -52,7 +56,10 @@ function SupportContent() {
   const deleteRequest = useMutation(api.supportRequests.deleteSupportRequest);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [selectedWarrior, setSelectedWarrior] = useState<string>("");
+  // Radix throws if a SelectItem value is "" (it reserves "" for "cleared"),
+  // and SelectContent renders its children even while closed — so an empty
+  // value crashed the whole page the moment this dialog mounted.
+  const [selectedWarrior, setSelectedWarrior] = useState<string>(GENERAL_REQUEST);
   const [selectedHelpTypes, setSelectedHelpTypes] = useState<string[]>([]);
   const [description, setDescription] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -89,13 +96,16 @@ function SupportContent() {
     setIsCreating(true);
     try {
       await createRequest({
-        warriorId: selectedWarrior ? (selectedWarrior as any) : undefined,
+        warriorId:
+          selectedWarrior !== GENERAL_REQUEST
+            ? (selectedWarrior as Id<"warriors">)
+            : undefined,
         helpTypes: selectedHelpTypes,
         description: description.trim() || undefined,
       });
       toast.success("Support request created");
       setIsCreateOpen(false);
-      setSelectedWarrior("");
+      setSelectedWarrior(GENERAL_REQUEST);
       setSelectedHelpTypes([]);
       setDescription("");
     } catch {
@@ -153,7 +163,7 @@ function SupportContent() {
                           <SelectValue placeholder="Select a warrior" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">General request</SelectItem>
+                          <SelectItem value={GENERAL_REQUEST}>General request</SelectItem>
                           {warriors.map((w) => (
                             <SelectItem key={w._id} value={w._id}>
                               {w.name}
@@ -229,7 +239,7 @@ function SupportContent() {
               </div>
             ) : myRequests.length > 0 ? (
               <div className="space-y-3">
-                {myRequests.map((request: any) => (
+                {myRequests.map((request) => (
                   <Card key={request._id} className="rounded-2xl border-0 shadow-sm">
                     <CardContent className="pt-4 pb-4">
                       <div className="flex items-start justify-between gap-4">
@@ -332,7 +342,7 @@ function SupportContent() {
               </div>
             ) : availableRequests.length > 0 ? (
               <div className="space-y-3">
-                {availableRequests.map((request: any) => (
+                {availableRequests.map((request) => (
                   <Card key={request._id} className="rounded-2xl border-0 shadow-sm">
                     <CardContent className="pt-4 pb-4">
                       <div className="flex items-start gap-4">

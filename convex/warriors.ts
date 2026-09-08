@@ -206,6 +206,11 @@ export const createWarrior = mutation({
 
     const now = Date.now();
 
+    // Fall back to the account's configured default (Settings → Privacy →
+    // Default Warrior Visibility) rather than forcing "public".
+    const visibility =
+      args.visibility ?? account.privacySettings?.defaultVisibility ?? "public";
+
     const warriorId = await ctx.db.insert("warriors", {
       accountId: account._id,
       name: args.name,
@@ -215,7 +220,7 @@ export const createWarrior = mutation({
       isFeather: false,
       profilePhoto: args.profilePhoto,
       bio: args.bio,
-      visibility: args.visibility || "public",
+      visibility,
       createdAt: now,
       updatedAt: now,
     });
@@ -225,7 +230,7 @@ export const createWarrior = mutation({
       warriorId,
       status: "stable",
       updatedBy: account._id,
-      visibility: args.visibility || "public",
+      visibility,
       createdAt: now,
     });
 

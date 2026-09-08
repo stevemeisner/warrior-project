@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { api } from "../../../convex/_generated/api";
+import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +16,13 @@ import { MessagesSkeleton } from "@/components/skeleton-loaders";
 import { MessageCircle, Send, Inbox, Search } from "lucide-react";
 import { useTypingIndicator } from "@/hooks/use-typing-indicator";
 import { GradientHeader, ContentPanel } from "@/components/gradient-header";
+
+// Participant projection built by `api.messages.getMyConversations`; named here
+// because the defensive Array.isArray read below collapses each row to `any`.
+type ConversationParticipant = Pick<
+  Doc<"accounts">,
+  "_id" | "name" | "profilePhoto"
+> | null;
 
 function MessagesContent() {
   const searchParams = useSearchParams();
@@ -28,7 +36,7 @@ function MessagesContent() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const selectedConversation = useQuery(
     api.messages.getConversation,
-    selectedConversationId ? { conversationId: selectedConversationId as any } : "skip"
+    selectedConversationId ? { conversationId: selectedConversationId as Id<"conversations"> } : "skip"
   );
 
   const sendMessage = useMutation(api.messages.sendMessage);
@@ -51,17 +59,17 @@ function MessagesContent() {
 
       // Find existing conversation with this user
       const existingConversation = conversations.find((conv) =>
-        conv.participants?.some((p: any) => p?._id?.toString() === toAccountId)
+        conv.participants?.some((p: ConversationParticipant) => p?._id?.toString() === toAccountId)
       );
 
       if (existingConversation) {
         setSelectedConversationId(existingConversation._id.toString());
-        await markAsRead({ conversationId: existingConversation._id as any });
+        await markAsRead({ conversationId: existingConversation._id as Id<"conversations"> });
       } else {
         // Create new conversation with this user
         try {
           const newConversationId = await startConversation({
-            participantIds: [toAccountId as any],
+            participantIds: [toAccountId as Id<"accounts">],
           });
           setSelectedConversationId(newConversationId.toString());
         } catch (error) {
@@ -90,7 +98,7 @@ function MessagesContent() {
 
   const handleSelectConversation = async (conversationId: string) => {
     setSelectedConversationId(conversationId);
-    await markAsRead({ conversationId: conversationId as any });
+    await markAsRead({ conversationId: conversationId as Id<"conversations"> });
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -101,7 +109,7 @@ function MessagesContent() {
     stopTyping();
     try {
       await sendMessage({
-        conversationId: selectedConversationId as any,
+        conversationId: selectedConversationId as Id<"conversations">,
         content: newMessage.trim(),
       });
       setNewMessage("");
@@ -140,7 +148,7 @@ function MessagesContent() {
                 {conversations && conversations.length > 0 ? (
                   conversations.map((conv) => {
                     const otherParticipant = conv.participants?.find(
-                      (p: any) => p !== null
+                      (p: ConversationParticipant) => p !== null
                     );
                     const initials = otherParticipant?.name
                       ?.split(" ")
@@ -259,7 +267,7 @@ function MessagesContent() {
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto p-5 space-y-3 bg-muted/20">
                   {selectedConversation.messages?.map((message, index) => {
-                    const isSent = message.senderId === (selectedConversation as any).currentAccountId;
+                    const isSent = message.senderId === selectedConversation.currentAccountId;
                     const showAvatar =
                       index === 0 ||
                       selectedConversation.messages?.[index - 1]?.senderId !== message.senderId;
@@ -316,7 +324,7 @@ function MessagesContent() {
                 </CardContent>
                 {typingUsers.length > 0 && (
                   <div className="px-5 py-1.5 text-xs text-muted-foreground animate-pulse shrink-0">
-                    {typingUsers.map((u: any) => u?.name).filter(Boolean).join(", ")}{" "}
+                    {typingUsers.map((u) => u?.name).filter(Boolean).join(", ")}{" "}
                     {typingUsers.length === 1 ? "is" : "are"} typing...
                   </div>
                 )}

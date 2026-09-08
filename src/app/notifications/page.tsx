@@ -3,6 +3,7 @@
 import { useQuery, useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
@@ -42,24 +43,27 @@ function NotificationsContent() {
   const deleteNotification = useMutation(api.notifications.deleteNotification);
 
   const handleMarkAsRead = async (notificationId: string) => {
-    await markAsRead({ notificationId: notificationId as any });
+    await markAsRead({ notificationId: notificationId as Id<"notifications"> });
   };
 
   const handleNotificationClick = async (notification: NonNullable<typeof notifications>[0]) => {
     if (!notification.isRead) {
-      await markAsRead({ notificationId: notification._id as any });
+      await markAsRead({ notificationId: notification._id });
     }
 
-    if (notification.type === "newMessage" && notification.relatedConversationId) {
-      router.push("/messages");
+    if (notification.type === "newMessage" && notification.relatedAccountId) {
+      // ?to= makes the messages page resolve and select the conversation;
+      // a bare /messages push left the reader on the empty pane.
+      router.push(`/messages?to=${notification.relatedAccountId}`);
     } else if (notification.type === "threadReply" && notification.relatedThreadId) {
       router.push(`/community?thread=${notification.relatedThreadId}`);
     } else if (notification.type === "statusChange" && notification.relatedWarriorId) {
       router.push(`/profile/warrior/${notification.relatedWarriorId}`);
     } else if (notification.type === "caregiverInvite") {
       router.push("/caregivers");
-    } else if (notification.type === "supportRequest" && notification.relatedAccountId) {
-      router.push(`/profile/${notification.relatedAccountId}`);
+    } else if (notification.type === "supportRequest") {
+      // The request itself only renders on /support, not on a profile.
+      router.push("/support");
     }
   };
 
@@ -68,7 +72,7 @@ function NotificationsContent() {
   };
 
   const handleDelete = async (notificationId: string) => {
-    await deleteNotification({ notificationId: notificationId as any });
+    await deleteNotification({ notificationId: notificationId as Id<"notifications"> });
   };
 
   const unreadCount = notifications?.filter((n) => !n.isRead).length || 0;

@@ -211,6 +211,23 @@ export const createNotification = internalMutation({
     relatedThreadId: v.optional(v.id("threads")),
   },
   handler: async (ctx, args) => {
+    // Respect the recipient's in-app notification switches (Settings →
+    // Notifications). These were written by the UI and read by nobody, so
+    // turning them off had no effect.
+    const recipient = await ctx.db.get(args.accountId);
+    const prefs = recipient?.notificationPreferences;
+    if (prefs) {
+      const allowed =
+        args.type === "statusChange"
+          ? prefs.inAppStatusChanges
+          : args.type === "newMessage"
+            ? prefs.inAppNewMessages
+            : args.type === "supportRequest"
+              ? prefs.inAppSupportRequests
+              : true; // caregiverInvite / threadReply / mention have no switch
+      if (!allowed) return null;
+    }
+
     const notificationId = await ctx.db.insert("notifications", {
       accountId: args.accountId,
       type: args.type,

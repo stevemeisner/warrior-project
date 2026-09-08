@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -88,6 +89,7 @@ function CommunityContent() {
 
   const createThread = useMutation(api.threads.createThread);
   const addComment = useMutation(api.threads.addComment);
+  const incrementViewCount = useMutation(api.threads.incrementViewCount);
   const submitReport = useMutation(api.moderation.submitReport);
   const togglePin = useMutation(api.moderation.togglePinThread);
   const toggleLock = useMutation(api.moderation.toggleLockThread);
@@ -112,8 +114,16 @@ function CommunityContent() {
   }, [searchParams]);
   const selectedThread = useQuery(
     api.threads.getThread,
-    selectedThreadId ? { threadId: selectedThreadId as any } : "skip"
+    selectedThreadId ? { threadId: selectedThreadId as Id<"threads"> } : "skip"
   );
+
+  // Count a view when a thread is opened. The mutation dedupes per account,
+  // so re-opening the same thread does not inflate the count — without this
+  // caller every thread displayed "0 views" forever.
+  useEffect(() => {
+    if (!selectedThreadId) return;
+    void incrementViewCount({ threadId: selectedThreadId as Id<"threads"> });
+  }, [selectedThreadId, incrementViewCount]);
 
   const [newComment, setNewComment] = useState("");
   const [isCommenting, setIsCommenting] = useState(false);
@@ -133,8 +143,9 @@ function CommunityContent() {
       toast.success("Report submitted. Thank you for helping keep our community safe.");
       setReportReason("");
       setIsReportOpen(false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to submit report");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      toast.error(message || "Failed to submit report");
     } finally {
       setIsReporting(false);
     }
@@ -143,7 +154,7 @@ function CommunityContent() {
   const handleTogglePin = async () => {
     if (!selectedThreadId) return;
     try {
-      const result = await togglePin({ threadId: selectedThreadId as any });
+      const result = await togglePin({ threadId: selectedThreadId as Id<"threads"> });
       toast.success(result.isPinned ? "Thread pinned" : "Thread unpinned");
     } catch (error) {
       toast.error("Failed to update thread");
@@ -153,7 +164,7 @@ function CommunityContent() {
   const handleToggleLock = async () => {
     if (!selectedThreadId) return;
     try {
-      const result = await toggleLock({ threadId: selectedThreadId as any });
+      const result = await toggleLock({ threadId: selectedThreadId as Id<"threads"> });
       toast.success(result.isLocked ? "Thread locked" : "Thread unlocked");
     } catch (error) {
       toast.error("Failed to update thread");
@@ -163,7 +174,7 @@ function CommunityContent() {
   const handleAdminDelete = async () => {
     if (!selectedThreadId) return;
     try {
-      await adminDeleteThread({ threadId: selectedThreadId as any });
+      await adminDeleteThread({ threadId: selectedThreadId as Id<"threads"> });
       toast.success("Thread deleted");
       setSelectedThreadId(null);
     } catch (error) {
@@ -187,7 +198,9 @@ function CommunityContent() {
       setNewContent("");
       setIsCreateOpen(false);
     } catch (error) {
-      toast.error("Failed to create thread");
+      // createThread throws actionable messages (title too long, rate limit:
+      // 5 threads / 5 min) — show them instead of a generic failure.
+      toast.error((error as Error)?.message || "Failed to create thread");
     } finally {
       setIsCreating(false);
     }
@@ -200,12 +213,12 @@ function CommunityContent() {
     setIsCommenting(true);
     try {
       await addComment({
-        threadId: selectedThreadId as any,
+        threadId: selectedThreadId as Id<"threads">,
         content: newComment.trim(),
       });
       setNewComment("");
     } catch (error) {
-      toast.error("Failed to add comment");
+      toast.error((error as Error)?.message || "Failed to add comment");
     } finally {
       setIsCommenting(false);
     }
@@ -551,7 +564,7 @@ function CommunityContent() {
                     )}
 
                     <div className="space-y-0 max-h-[300px] overflow-y-auto divide-y divide-border">
-                      {selectedThread.comments?.map((comment: any) => (
+                      {selectedThread.comments?.map((comment) => (
                         <div key={comment._id} className="flex gap-2.5 py-3">
                           <Avatar className="h-7 w-7 shrink-0">
                             <AvatarImage src={comment.authorPhoto} />

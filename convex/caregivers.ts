@@ -170,10 +170,16 @@ export const inviteCaregiver = mutation({
       throw new Error("Only family accounts can invite caregivers");
     }
 
+    // Emails are stored lowercased on accounts (see convex/auth.ts), and both
+    // index lookups below are exact-match, so normalize here or an invite typed
+    // "Jane@Example.com" is silently dead: no notification, never listed,
+    // and accept/decline reject it as "not for you".
+    const email = args.email.trim().toLowerCase();
+
     // Check if already invited (only block pending or accepted — allow re-inviting declined)
     const existingInvite = await ctx.db
       .query("caregivers")
-      .withIndex("by_invite_email", (q) => q.eq("inviteEmail", args.email))
+      .withIndex("by_invite_email", (q) => q.eq("inviteEmail", email))
       .filter((q) =>
         q.and(
           q.eq(q.field("accountId"), account._id),
@@ -192,7 +198,7 @@ export const inviteCaregiver = mutation({
     // Check if the caregiver already has an account
     const caregiverAccount = await ctx.db
       .query("accounts")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .withIndex("by_email", (q) => q.eq("email", email))
       .first();
 
     // When the invitee doesn't have an account yet, we use the family's own ID
@@ -204,7 +210,7 @@ export const inviteCaregiver = mutation({
       caregiverAccountId: caregiverAccount?._id || account._id,
       permissions: args.permissions,
       inviteStatus: "pending",
-      inviteEmail: args.email,
+      inviteEmail: email,
       invitedAt: Date.now(),
     });
 
@@ -253,7 +259,8 @@ export const acceptInvite = mutation({
       throw new Error("Invite not found");
     }
 
-    if (invite.inviteEmail !== account.email) {
+    // Case-insensitive: invites created before normalization may hold mixed case.
+    if ((invite.inviteEmail ?? "").toLowerCase() !== account.email.toLowerCase()) {
       throw new Error("This invite is not for you");
     }
 
@@ -294,7 +301,7 @@ export const declineInvite = mutation({
       throw new Error("Invite not found");
     }
 
-    if (invite.inviteEmail !== account.email) {
+    if ((invite.inviteEmail ?? "").toLowerCase() !== account.email.toLowerCase()) {
       throw new Error("This invite is not for you");
     }
 

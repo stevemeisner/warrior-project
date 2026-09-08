@@ -1,4 +1,4 @@
-import { convexTest } from "convex-test";
+import { convexTest, type TestConvex } from "convex-test";
 import { describe, expect, it, beforeEach } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
@@ -17,10 +17,10 @@ beforeEach(() => {
 
 // Helper to insert a support request directly via t.run (bypasses rate limit + notifications)
 async function insertSupportRequest(
-  t: ReturnType<typeof convexTest>,
+  t: TestConvex<typeof schema>,
   opts: {
     accountId: Id<"accounts">;
-    warriorId?: string;
+    warriorId?: Id<"warriors">;
     helpTypes?: string[];
     description?: string;
     isActive?: boolean;
@@ -30,7 +30,7 @@ async function insertSupportRequest(
   return await t.run(async (ctx) => {
     return await ctx.db.insert("supportRequests", {
       accountId: opts.accountId,
-      warriorId: opts.warriorId as any,
+      warriorId: opts.warriorId,
       isActive: opts.isActive ?? true,
       helpTypes: opts.helpTypes ?? ["meals"],
       description: opts.description,
@@ -177,13 +177,13 @@ describe("getMySupportRequests", () => {
     const { warriorId } = await createWarrior(t, { accountId, name: "Luna" });
 
     await insertSupportRequest(t, {
-      accountId: accountId as any,
-      warriorId: warriorId as any,
+      accountId: accountId,
+      warriorId: warriorId,
       helpTypes: ["meals"],
       description: "Request 1",
     });
     await insertSupportRequest(t, {
-      accountId: accountId as any,
+      accountId: accountId,
       helpTypes: ["childcare"],
       description: "Request 2",
     });
@@ -191,10 +191,10 @@ describe("getMySupportRequests", () => {
     const requests = await asUser.query(api.supportRequests.getMySupportRequests, {});
     expect(requests).toHaveLength(2);
     // Should include warrior name when warriorId is present
-    const withWarrior = requests.find((r: any) => r.warriorName === "Luna");
+    const withWarrior = requests.find((r) => r.warriorName === "Luna");
     expect(withWarrior).toBeDefined();
     // Without warrior should have undefined warriorName
-    const withoutWarrior = requests.find((r: any) => r.warriorName === undefined);
+    const withoutWarrior = requests.find((r) => r.warriorName === undefined);
     expect(withoutWarrior).toBeDefined();
   });
 
@@ -203,12 +203,12 @@ describe("getMySupportRequests", () => {
     const { accountId, asUser } = await createAccount(t, { role: "family" });
 
     await insertSupportRequest(t, {
-      accountId: accountId as any,
+      accountId: accountId,
       helpTypes: ["meals"],
       isActive: true,
     });
     await insertSupportRequest(t, {
-      accountId: accountId as any,
+      accountId: accountId,
       helpTypes: ["childcare"],
       isActive: false,
     });
@@ -228,8 +228,8 @@ describe("getMySupportRequests", () => {
     const { accountId: family1Id, asUser: asFamily1 } = await createAccount(t, { role: "family" });
     const { accountId: family2Id } = await createAccount(t, { role: "family" });
 
-    await insertSupportRequest(t, { accountId: family1Id as any, helpTypes: ["meals"] });
-    await insertSupportRequest(t, { accountId: family2Id as any, helpTypes: ["childcare"] });
+    await insertSupportRequest(t, { accountId: family1Id, helpTypes: ["meals"] });
+    await insertSupportRequest(t, { accountId: family2Id, helpTypes: ["childcare"] });
 
     const requests = await asFamily1.query(api.supportRequests.getMySupportRequests, {});
     expect(requests).toHaveLength(1);
@@ -262,12 +262,12 @@ describe("getAvailableSupportRequests", () => {
 
     // Insert active and inactive requests for the family
     await insertSupportRequest(t, {
-      accountId: familyId as any,
+      accountId: familyId,
       helpTypes: ["meals"],
       isActive: true,
     });
     await insertSupportRequest(t, {
-      accountId: familyId as any,
+      accountId: familyId,
       helpTypes: ["childcare"],
       isActive: false,
     });
@@ -294,12 +294,12 @@ describe("getAvailableSupportRequests", () => {
     });
 
     await insertSupportRequest(t, {
-      accountId: connectedFamilyId as any,
+      accountId: connectedFamilyId,
       helpTypes: ["meals"],
       isActive: true,
     });
     await insertSupportRequest(t, {
-      accountId: unconnectedFamilyId as any,
+      accountId: unconnectedFamilyId,
       helpTypes: ["transportation"],
       isActive: true,
     });
@@ -323,7 +323,7 @@ describe("getAvailableSupportRequests", () => {
     });
 
     await insertSupportRequest(t, {
-      accountId: familyId as any,
+      accountId: familyId,
       helpTypes: ["meals"],
       isActive: true,
     });
@@ -341,7 +341,7 @@ describe("updateSupportRequest", () => {
     const { accountId, asUser } = await createAccount(t, { role: "family" });
 
     const requestId = await insertSupportRequest(t, {
-      accountId: accountId as any,
+      accountId: accountId,
       helpTypes: ["meals"],
       description: "Original",
     });
@@ -364,7 +364,7 @@ describe("updateSupportRequest", () => {
     const { accountId } = await createAccount(t, { role: "family" });
 
     const requestId = await insertSupportRequest(t, {
-      accountId: accountId as any,
+      accountId: accountId,
       helpTypes: ["meals"],
     });
 
@@ -382,7 +382,7 @@ describe("updateSupportRequest", () => {
     const { asUser: asOtherUser } = await createAccount(t, { role: "family" });
 
     const requestId = await insertSupportRequest(t, {
-      accountId: ownerId as any,
+      accountId: ownerId,
       helpTypes: ["meals"],
     });
 
@@ -399,7 +399,7 @@ describe("updateSupportRequest", () => {
     const { accountId, asUser } = await createAccount(t, { role: "family" });
 
     const requestId = await insertSupportRequest(t, {
-      accountId: accountId as any,
+      accountId: accountId,
       helpTypes: ["meals"],
     });
 
@@ -425,7 +425,7 @@ describe("updateSupportRequest", () => {
     const { accountId, asUser } = await createAccount(t, { role: "family" });
 
     const requestId = await insertSupportRequest(t, {
-      accountId: accountId as any,
+      accountId: accountId,
       helpTypes: ["meals"],
     });
 
@@ -446,7 +446,7 @@ describe("deleteSupportRequest", () => {
     const { accountId, asUser } = await createAccount(t, { role: "family" });
 
     const requestId = await insertSupportRequest(t, {
-      accountId: accountId as any,
+      accountId: accountId,
       helpTypes: ["meals"],
     });
 
@@ -461,7 +461,7 @@ describe("deleteSupportRequest", () => {
     const { accountId } = await createAccount(t, { role: "family" });
 
     const requestId = await insertSupportRequest(t, {
-      accountId: accountId as any,
+      accountId: accountId,
       helpTypes: ["meals"],
     });
 
@@ -476,7 +476,7 @@ describe("deleteSupportRequest", () => {
     const { asUser: asOtherUser } = await createAccount(t, { role: "family" });
 
     const requestId = await insertSupportRequest(t, {
-      accountId: ownerId as any,
+      accountId: ownerId,
       helpTypes: ["meals"],
     });
 
@@ -501,17 +501,17 @@ describe("getActiveCount", () => {
     const { accountId, asUser } = await createAccount(t, { role: "family" });
 
     await insertSupportRequest(t, {
-      accountId: accountId as any,
+      accountId: accountId,
       helpTypes: ["meals"],
       isActive: true,
     });
     await insertSupportRequest(t, {
-      accountId: accountId as any,
+      accountId: accountId,
       helpTypes: ["childcare"],
       isActive: true,
     });
     await insertSupportRequest(t, {
-      accountId: accountId as any,
+      accountId: accountId,
       helpTypes: ["transportation"],
       isActive: false,
     });
@@ -540,15 +540,15 @@ describe("getActiveCount", () => {
     });
 
     // family1: 2 active, 1 inactive
-    await insertSupportRequest(t, { accountId: family1Id as any, helpTypes: ["meals"], isActive: true });
-    await insertSupportRequest(t, { accountId: family1Id as any, helpTypes: ["childcare"], isActive: true });
-    await insertSupportRequest(t, { accountId: family1Id as any, helpTypes: ["other"], isActive: false });
+    await insertSupportRequest(t, { accountId: family1Id, helpTypes: ["meals"], isActive: true });
+    await insertSupportRequest(t, { accountId: family1Id, helpTypes: ["childcare"], isActive: true });
+    await insertSupportRequest(t, { accountId: family1Id, helpTypes: ["other"], isActive: false });
 
     // family2: 1 active
-    await insertSupportRequest(t, { accountId: family2Id as any, helpTypes: ["emotional"], isActive: true });
+    await insertSupportRequest(t, { accountId: family2Id, helpTypes: ["emotional"], isActive: true });
 
     // unconnected family: 1 active (should not count)
-    await insertSupportRequest(t, { accountId: unconnectedFamilyId as any, helpTypes: ["financial"], isActive: true });
+    await insertSupportRequest(t, { accountId: unconnectedFamilyId, helpTypes: ["financial"], isActive: true });
 
     const count = await asCaregiver.query(api.supportRequests.getActiveCount, {});
     expect(count).toBe(3); // 2 from family1 + 1 from family2

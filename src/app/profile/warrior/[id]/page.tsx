@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 import { WarriorForm } from "@/components/warrior-form";
 import { StatusSelector, StatusBadge, WarriorStatus } from "@/components/status-selector";
 import { Button } from "@/components/ui/button";
@@ -32,10 +33,10 @@ function WarriorDetailContent() {
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-  const warrior = useQuery(api.warriors.getWarrior, { warriorId: warriorId as any });
+  const warrior = useQuery(api.warriors.getWarrior, { warriorId: warriorId as Id<"warriors"> });
   const account = useQuery(api.accounts.getCurrentAccount);
   const statusHistory = useQuery(api.status.getStatusHistory, {
-    warriorId: warriorId as any,
+    warriorId: warriorId as Id<"warriors">,
     limit: 20,
   });
 
@@ -75,7 +76,7 @@ function WarriorDetailContent() {
     setIsUpdatingStatus(true);
     try {
       await updateStatus({
-        warriorId: warriorId as any,
+        warriorId: warriorId as Id<"warriors">,
         status,
       });
       toast.success("Status updated");
@@ -89,7 +90,7 @@ function WarriorDetailContent() {
 
   const handleDelete = async () => {
     try {
-      await deleteWarrior({ warriorId: warriorId as any });
+      await deleteWarrior({ warriorId: warriorId as Id<"warriors"> });
       toast.success("Warrior deleted");
       router.push("/dashboard");
     } catch (error) {

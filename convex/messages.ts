@@ -6,6 +6,16 @@ import { auth } from "./auth";
 import { isBlocked } from "./blockedUsers";
 import { checkRateLimit } from "./rateLimit";
 
+// Shape of a participant summary embedded in conversation list results
+type ParticipantSummary = { _id: Id<"accounts">; name: string; profilePhoto?: string };
+
+// Shape of each entry returned by getMyConversations
+type ConversationListItem = Omit<Doc<"conversations">, "participants"> & {
+  participants: (ParticipantSummary | null)[];
+  lastMessage: { content: string; createdAt: number } | null;
+  unreadCount: number;
+};
+
 // Get all conversations for the current user (with pagination)
 export const getMyConversations = query({
   args: {
@@ -13,7 +23,7 @@ export const getMyConversations = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const emptyResult = { conversations: [] as any[], nextCursor: undefined as number | undefined, hasMore: false };
+    const emptyResult = { conversations: [] as ConversationListItem[], nextCursor: undefined as number | undefined, hasMore: false };
 
     const userId = await auth.getUserId(ctx);
     if (!userId) return emptyResult;
@@ -53,7 +63,7 @@ export const getMyConversations = query({
 
     // Dedup participant lookups across all conversations
     const allParticipantIds = [...new Set(myConversations.flatMap((c) => c.participants))];
-    const participantMap = new Map<string, { _id: Id<"accounts">; name: string; profilePhoto?: string }>();
+    const participantMap = new Map<string, ParticipantSummary>();
     for (const pId of allParticipantIds) {
       const p = await ctx.db.get(pId);
       if (p) participantMap.set(pId, { _id: p._id, name: p.name, profilePhoto: p.profilePhoto });
@@ -61,7 +71,7 @@ export const getMyConversations = query({
 
     // Enrich with participant info and last message
     const enrichedConversations = await Promise.all(
-      myConversations.map(async (conv) => {
+      myConversations.map(async (conv): Promise<ConversationListItem> => {
         const participants = conv.participants
           .map((pId) => participantMap.get(pId) ?? null);
 
@@ -85,7 +95,10 @@ export const getMyConversations = query({
 
         return {
           ...conv,
-          participants: participants.filter(Boolean),
+          // Exclude self: the UI renders these as "the other party", and the
+          // creator was stored first, so every conversation you started
+          // displayed your own name and avatar.
+          participants: participants.filter((p) => p && p._id !== account._id),
           lastMessage: lastMessage
             ? {
                 content:
@@ -221,7 +234,8 @@ export const getConversation = query({
     return {
       ...conversation,
       currentAccountId: account._id,
-      participants: participants.filter(Boolean),
+      // Excludes self — `currentAccountId` above is what identifies the viewer.
+      participants: participants.filter((p) => p && p._id !== account._id),
       messages: enrichedMessages,
       oldestMessageTimestamp: oldestMessage?.createdAt,
       hasMoreMessages: messages.length === limit,

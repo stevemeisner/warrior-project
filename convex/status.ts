@@ -126,48 +126,20 @@ export const getStatusHistory = query({
       return [];
     }
 
-    // Check access
+    const viewerAccount = userId
+      ? await ctx.db
+          .query("accounts")
+          .withIndex("by_authId", (q) => q.eq("authId", userId))
+          .first()
+      : null;
+
+    // Owner, or an accepted caregiver for the owner, sees everything.
     let hasFullAccess = false;
-    if (userId) {
-      const viewerAccount = await ctx.db
-        .query("accounts")
-        .withIndex("by_authId", (q) => q.eq("authId", userId))
-        .first();
-
-      if (viewerAccount) {
-        hasFullAccess = warrior.accountId === viewerAccount._id;
-
-        if (!hasFullAccess) {
-          const caregiverRelation = await ctx.db
-            .query("caregivers")
-            .withIndex("by_caregiver", (q) =>
-              q.eq("caregiverAccountId", viewerAccount._id)
-            )
-            .filter((q) => q.eq(q.field("accountId"), warrior.accountId))
-            .first();
-
-          hasFullAccess =
-            caregiverRelation?.inviteStatus === "accepted";
-        }
-      }
-    }
-
-    const statusUpdates = await ctx.db
-      .query("statusUpdates")
-      .withIndex("by_warrior_and_created", (q) => q.eq("warriorId", args.warriorId))
-      .order("desc")
-      .take(args.limit || 50);
-
-    // Check if viewer is a connection (caregiver relation in either direction)
     let isConnection = false;
-    if (!hasFullAccess && userId) {
-      const viewerAccount = await ctx.db
-        .query("accounts")
-        .withIndex("by_authId", (q) => q.eq("authId", userId))
-        .first();
+    if (viewerAccount) {
+      hasFullAccess = warrior.accountId === viewerAccount._id;
 
-      if (viewerAccount) {
-        // Check if viewer is a caregiver for the warrior's owner
+      if (!hasFullAccess) {
         const asCaregiverForOwner = await ctx.db
           .query("caregivers")
           .withIndex("by_caregiver", (q) =>
@@ -181,7 +153,7 @@ export const getStatusHistory = query({
           )
           .first();
 
-        // Check if warrior's owner is a caregiver for the viewer
+        // Or the warrior's family is an accepted caregiver for the viewer.
         const ownerAsCaregiverForViewer = await ctx.db
           .query("caregivers")
           .withIndex("by_caregiver", (q) =>
@@ -195,11 +167,26 @@ export const getStatusHistory = query({
           )
           .first();
 
+        hasFullAccess = !!asCaregiverForOwner;
         isConnection = !!(asCaregiverForOwner || ownerAsCaregiverForViewer);
       }
     }
 
-    // If not owner/caregiver, filter by visibility
+    // The warrior's OWN visibility gates the whole history. Without this a
+    // warrior switched to "private" still exposed every past update whose own
+    // visibility happened to be "public".
+    if (!hasFullAccess) {
+      if (warrior.visibility === "private") return [];
+      if (warrior.visibility === "connections" && !isConnection) return [];
+    }
+
+    const statusUpdates = await ctx.db
+      .query("statusUpdates")
+      .withIndex("by_warrior_and_created", (q) => q.eq("warriorId", args.warriorId))
+      .order("desc")
+      .take(args.limit || 50);
+
+    // If not owner/caregiver, filter by each update's visibility
     const visibleUpdates = hasFullAccess
       ? statusUpdates
       : statusUpdates.filter((u) =>
@@ -226,34 +213,70 @@ export const getStatusHistory = query({
   },
 });
 
-// Get recent status updates across all visible warriors
+// Recent status updates for the signed-in user's own dashboard: their warriors
+// plus the warriors of families they caregive for.
+//
+// This used to return the newest PUBLIC updates globally while the dashboard
+// labelled them "how your warriors are doing today" — a brand-new account saw
+// strangers' children in its personal timeline.
 export const getRecentUpdates = query({
   args: {
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
+    if (!userId) return [];
 
-    let viewerAccount = null;
-    if (userId) {
-      viewerAccount = await ctx.db
-        .query("accounts")
-        .withIndex("by_authId", (q) => q.eq("authId", userId))
-        .first();
-    }
+    const viewerAccount = await ctx.db
+      .query("accounts")
+      .withIndex("by_authId", (q) => q.eq("authId", userId))
+      .first();
+    if (!viewerAccount) return [];
 
-    // Get recent public status updates
-    // Take a larger batch to ensure enough public results after filtering
-    const desiredCount = args.limit || 20;
-    const recentUpdates = await ctx.db
-      .query("statusUpdates")
-      .withIndex("by_created")
-      .order("desc")
-      .take(desiredCount * 10);
+    const desiredCount = Math.min(args.limit || 20, 100);
 
-    // Filter by visibility
-    const publicUpdates = recentUpdates
-      .filter((u) => u.visibility === "public")
+    // Families whose warriors the viewer may see: their own, plus any family
+    // that accepted them as a caregiver.
+    const caregiverRelations = await ctx.db
+      .query("caregivers")
+      .withIndex("by_caregiver", (q) => q.eq("caregiverAccountId", viewerAccount._id))
+      .filter((q) => q.eq(q.field("inviteStatus"), "accepted"))
+      .collect();
+
+    const familyIds = [
+      viewerAccount._id,
+      ...caregiverRelations
+        .map((r) => r.accountId)
+        .filter((id) => id !== viewerAccount._id),
+    ];
+
+    // Index-backed per-warrior reads instead of a global scan of statusUpdates.
+    const scopedWarriors = (
+      await Promise.all(
+        familyIds.map((accountId) =>
+          ctx.db
+            .query("warriors")
+            .withIndex("by_account", (q) => q.eq("accountId", accountId))
+            .collect()
+        )
+      )
+    ).flat();
+
+    if (scopedWarriors.length === 0) return [];
+
+    const perWarriorUpdates = await Promise.all(
+      scopedWarriors.map((warrior) =>
+        ctx.db
+          .query("statusUpdates")
+          .withIndex("by_warrior_and_created", (q) => q.eq("warriorId", warrior._id))
+          .order("desc")
+          .take(desiredCount)
+      )
+    );
+
+    const publicUpdates = perWarriorUpdates
+      .flat()
+      .sort((a, b) => b.createdAt - a.createdAt)
       .slice(0, desiredCount);
 
     // Dedup all entity lookups

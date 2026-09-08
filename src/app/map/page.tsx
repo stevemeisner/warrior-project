@@ -11,7 +11,7 @@ import Link from "next/link";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { StatusBadge, WarriorStatus } from "@/components/status-selector";
-import { MapWarriorListPanel } from "@/components/map-warrior-list-panel";
+import { MapWarriorListPanel, type WarriorWithAccount } from "@/components/map-warrior-list-panel";
 import { statusIconMap } from "@/components/icons/status-icons";
 import Supercluster from "supercluster";
 
@@ -73,7 +73,7 @@ function MapContent() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
-  const [selectedWarrior, setSelectedWarrior] = useState<any>(null);
+  const [selectedWarrior, setSelectedWarrior] = useState<WarriorWithAccount | null>(null);
   const [statusFilter, setStatusFilter] = useState<WarriorStatus | "all">("all");
   const [mapReady, setMapReady] = useState(false);
   const [viewportBounds, setViewportBounds] = useState<ViewportBounds | null>(null);
@@ -142,7 +142,7 @@ function MapContent() {
     });
   }, [warriors, viewportBounds]);
 
-  const handleWarriorListClick = (warrior: any) => {
+  const handleWarriorListClick = (warrior: WarriorWithAccount) => {
     const loc = warrior.account?.location;
     if (loc?.longitude == null || loc?.latitude == null || !map.current) return;
     map.current.flyTo({

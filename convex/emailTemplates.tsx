@@ -54,17 +54,17 @@ export function WelcomeEmail({ name }: { name: string }) {
         <Container style={styles.container}>
           <Heading style={styles.heading}>Welcome to Warrior Project, {name}!</Heading>
           <Text style={styles.text}>
-            We're so glad you've joined our community of families and caregivers
+            We&apos;re so glad you&apos;ve joined our community of families and caregivers
             supporting special needs children.
           </Text>
-          <Text style={styles.text}>Here's what you can do:</Text>
+          <Text style={styles.text}>Here&apos;s what you can do:</Text>
           <Text style={styles.text}>
             - Add your warrior(s) to your profile{"\n"}
             - Share status updates with your community{"\n"}
             - Connect with other families on the map{"\n"}
             - Join discussions in our community forums
           </Text>
-          <Text style={styles.text}>Remember, you're not alone on this journey.</Text>
+          <Text style={styles.text}>Remember, you&apos;re not alone on this journey.</Text>
           <Section style={{ marginTop: "30px" }}>
             <Button href={`${APP_URL}/dashboard`} style={styles.button}>
               Go to Dashboard
@@ -96,7 +96,7 @@ export function StatusChangeEmail({
           <Text style={styles.text}>
             <strong>{warriorName}</strong> is now <strong>{status}</strong>.
           </Text>
-          {context && <Text style={styles.italic}>"{context}"</Text>}
+          {context && <Text style={styles.italic}>&quot;{context}&quot;</Text>}
           <Section style={{ marginTop: "30px" }}>
             <Button href={`${APP_URL}/dashboard`} style={styles.button}>
               View Dashboard
@@ -160,7 +160,7 @@ export function SupportRequestEmail({
           </Text>
           {helpTypes.length > 0 && (
             <>
-              <Text style={styles.text}>They're looking for help with:</Text>
+              <Text style={styles.text}>They&apos;re looking for help with:</Text>
               {helpTypes.map((t, i) => (
                 <Text key={i} style={{ ...styles.text, margin: "4px 0", paddingLeft: "16px" }}>
                   • {t}
@@ -198,7 +198,7 @@ export function CaregiverInviteEmail({
             warrior on Warrior Project.
           </Text>
           <Text style={styles.text}>
-            You'll have <strong>{permissions}</strong> access.
+            You&apos;ll have <strong>{permissions}</strong> access.
           </Text>
           <Section style={{ marginTop: "30px" }}>
             <Button href={`${APP_URL}/signin`} style={styles.button}>
@@ -206,7 +206,7 @@ export function CaregiverInviteEmail({
             </Button>
           </Section>
           <Text style={styles.muted}>
-            If you don't have an account yet, you can create one after clicking
+            If you don&apos;t have an account yet, you can create one after clicking
             the link above.
           </Text>
         </Container>

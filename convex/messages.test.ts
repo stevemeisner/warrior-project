@@ -28,7 +28,9 @@ describe("getMyConversations", () => {
 
     const result = await asAlice.query(api.messages.getMyConversations, {});
     expect(result.conversations).toHaveLength(1);
-    expect(result.conversations[0].participants).toHaveLength(2);
+    // Self is excluded: the UI renders these as "the other party".
+    expect(result.conversations[0].participants).toHaveLength(1);
+    expect(result.conversations[0].participants[0]!._id).toEqual(bobId);
   });
 
   it("does not return conversations where user is not a participant", async () => {
@@ -133,7 +135,10 @@ describe("getConversation", () => {
     const result = await asAlice.query(api.messages.getConversation, { conversationId });
     expect(result).not.toBeNull();
     expect(result!.messages).toHaveLength(2);
-    expect(result!.participants).toHaveLength(2);
+    // Self excluded; `currentAccountId` identifies the viewer instead.
+    expect(result!.participants).toHaveLength(1);
+    expect(result!.participants[0]!._id).toEqual(bobId);
+    expect(result!.currentAccountId).toEqual(aliceId);
   });
 
   it("messages are returned in chronological order", async () => {

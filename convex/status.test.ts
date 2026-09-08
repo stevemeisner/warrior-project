@@ -422,65 +422,192 @@ describe("getStatusHistory", () => {
   });
 });
 
+describe("getStatusHistory — warrior-level visibility", () => {
+  it("a private warrior exposes nothing to a stranger, even public updates", async () => {
+    // Regression: history was filtered only by each UPDATE's visibility, so a
+    // warrior switched to private kept leaking its older public updates.
+    const t = convexTest(schema, modules);
+    const { accountId } = await createAccount(t, { name: "Alice" });
+    const { warriorId } = await createWarrior(t, {
+      accountId,
+      visibility: "private",
+    });
+    await createStatusUpdate(t, {
+      warriorId,
+      updatedBy: accountId,
+      visibility: "public",
+      status: "thriving",
+    });
+
+    const { asUser: asStranger } = await createAccount(t, { name: "Stranger" });
+    expect(await asStranger.query(api.status.getStatusHistory, { warriorId })).toEqual([]);
+    expect(await t.query(api.status.getStatusHistory, { warriorId })).toEqual([]);
+  });
+
+  it("a private warrior's owner still sees the full history", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId, asUser } = await createAccount(t);
+    const { warriorId } = await createWarrior(t, { accountId, visibility: "private" });
+    await createStatusUpdate(t, {
+      warriorId,
+      updatedBy: accountId,
+      visibility: "public",
+      status: "stable",
+    });
+
+    expect(await asUser.query(api.status.getStatusHistory, { warriorId })).toHaveLength(1);
+  });
+
+  it("a connections-only warrior is hidden from strangers but shown to a caregiver", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId: familyId } = await createAccount(t, { name: "Family" });
+    const { warriorId } = await createWarrior(t, {
+      accountId: familyId,
+      visibility: "connections",
+    });
+    await createStatusUpdate(t, {
+      warriorId,
+      updatedBy: familyId,
+      visibility: "public",
+      status: "stable",
+    });
+
+    const { asUser: asStranger } = await createAccount(t, { name: "Stranger" });
+    expect(await asStranger.query(api.status.getStatusHistory, { warriorId })).toEqual([]);
+
+    const { accountId: caregiverId, asUser: asCaregiver } = await createAccount(t, {
+      name: "Caregiver",
+      role: "caregiver",
+    });
+    await createCaregiverRelation(t, {
+      accountId: familyId,
+      caregiverAccountId: caregiverId,
+      inviteStatus: "accepted",
+    });
+    expect(await asCaregiver.query(api.status.getStatusHistory, { warriorId })).toHaveLength(1);
+  });
+});
+
 // ─── getRecentUpdates ────────────────────────────────────────────────────────
 
 describe("getRecentUpdates", () => {
-  it("returns recent public updates enriched with warrior info", async () => {
+  it("returns the viewer's own warriors' updates, enriched", async () => {
     const t = convexTest(schema, modules);
-    const { accountId } = await createAccount(t, { name: "Alice" });
+    const { accountId, asUser } = await createAccount(t, { name: "Alice" });
     const { warriorId } = await createWarrior(t, { accountId, name: "WarriorKid" });
 
     await createStatusUpdate(t, { warriorId, updatedBy: accountId, visibility: "public", status: "thriving" });
 
-    const updates = await t.query(api.status.getRecentUpdates, {});
+    const updates = await asUser.query(api.status.getRecentUpdates, {});
     expect(updates).toHaveLength(1);
     expect(updates[0].warrior).not.toBeNull();
     expect(updates[0].warrior!.name).toBe("WarriorKid");
     expect(updates[0].updatedByName).toBe("Alice");
   });
 
-  it("filters out non-public updates", async () => {
+  it("includes the viewer's own non-public updates — it is their own dashboard", async () => {
     const t = convexTest(schema, modules);
-    const { accountId } = await createAccount(t);
+    const { accountId, asUser } = await createAccount(t);
     const { warriorId } = await createWarrior(t, { accountId });
 
     await createStatusUpdate(t, { warriorId, updatedBy: accountId, visibility: "public", status: "stable" });
     await createStatusUpdate(t, { warriorId, updatedBy: accountId, visibility: "private", status: "struggling" });
     await createStatusUpdate(t, { warriorId, updatedBy: accountId, visibility: "connections", status: "thriving" });
 
-    const updates = await t.query(api.status.getRecentUpdates, {});
-    expect(updates).toHaveLength(1);
-    expect(updates[0].status).toBe("stable");
+    const updates = await asUser.query(api.status.getRecentUpdates, {});
+    expect(updates).toHaveLength(3);
   });
 
-  it("filters out updates where warrior is null (deleted)", async () => {
+  it("NEVER shows a stranger's warrior, even on a public update", async () => {
+    // Regression: this query used to return the newest public updates globally
+    // while the dashboard labelled them "how your warriors are doing today",
+    // so a brand-new account saw other families' children.
     const t = convexTest(schema, modules);
-    const { accountId } = await createAccount(t);
+    const { accountId: strangerId } = await createAccount(t, { name: "Stranger" });
+    const { warriorId: strangerWarrior } = await createWarrior(t, {
+      accountId: strangerId,
+      name: "NotYours",
+    });
+    await createStatusUpdate(t, {
+      warriorId: strangerWarrior,
+      updatedBy: strangerId,
+      visibility: "public",
+      status: "thriving",
+    });
+
+    const { asUser: asNewcomer } = await createAccount(t, { name: "Newcomer" });
+
+    const updates = await asNewcomer.query(api.status.getRecentUpdates, {});
+    expect(updates).toEqual([]);
+  });
+
+  it("includes warriors of families the viewer caregives for", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId: familyId } = await createAccount(t, { name: "Family" });
+    const { accountId: caregiverId, asUser: asCaregiver } = await createAccount(t, {
+      name: "Caregiver",
+      role: "caregiver",
+    });
+    const { warriorId } = await createWarrior(t, { accountId: familyId, name: "TheirKid" });
+
+    await createCaregiverRelation(t, {
+      accountId: familyId,
+      caregiverAccountId: caregiverId,
+      inviteStatus: "accepted",
+    });
+    await createStatusUpdate(t, { warriorId, updatedBy: familyId, visibility: "public", status: "stable" });
+
+    const updates = await asCaregiver.query(api.status.getRecentUpdates, {});
+    expect(updates).toHaveLength(1);
+    expect(updates[0].warrior!.name).toBe("TheirKid");
+  });
+
+  it("excludes families whose caregiver invite is still pending", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId: familyId } = await createAccount(t, { name: "Family" });
+    const { accountId: caregiverId, asUser: asCaregiver } = await createAccount(t, {
+      name: "Caregiver",
+      role: "caregiver",
+    });
+    const { warriorId } = await createWarrior(t, { accountId: familyId });
+
+    await createCaregiverRelation(t, {
+      accountId: familyId,
+      caregiverAccountId: caregiverId,
+      inviteStatus: "pending",
+    });
+    await createStatusUpdate(t, { warriorId, updatedBy: familyId, visibility: "public", status: "stable" });
+
+    const updates = await asCaregiver.query(api.status.getRecentUpdates, {});
+    expect(updates).toEqual([]);
+  });
+
+  it("filters out updates whose warrior was deleted", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId, asUser } = await createAccount(t);
     const { warriorId } = await createWarrior(t, { accountId });
 
     await createStatusUpdate(t, { warriorId, updatedBy: accountId, visibility: "public", status: "stable" });
-
-    // Delete the warrior
     await t.run(async (ctx) => ctx.db.delete(warriorId));
 
-    const updates = await t.query(api.status.getRecentUpdates, {});
+    const updates = await asUser.query(api.status.getRecentUpdates, {});
     expect(updates).toHaveLength(0);
   });
 
   it("respects limit argument", async () => {
     const t = convexTest(schema, modules);
-    const { accountId } = await createAccount(t);
+    const { accountId, asUser } = await createAccount(t);
     const { warriorId } = await createWarrior(t, { accountId });
 
     await createStatusUpdate(t, { warriorId, updatedBy: accountId, visibility: "public", status: "stable" });
     await createStatusUpdate(t, { warriorId, updatedBy: accountId, visibility: "public", status: "thriving" });
     await createStatusUpdate(t, { warriorId, updatedBy: accountId, visibility: "public", status: "struggling" });
 
-    const updates = await t.query(api.status.getRecentUpdates, { limit: 2 });
+    const updates = await asUser.query(api.status.getRecentUpdates, { limit: 2 });
     expect(updates).toHaveLength(2);
   });
 
-  it("works for unauthenticated users", async () => {
+  it("returns nothing for an unauthenticated visitor", async () => {
     const t = convexTest(schema, modules);
     const { accountId } = await createAccount(t);
     const { warriorId } = await createWarrior(t, { accountId });
@@ -488,7 +615,7 @@ describe("getRecentUpdates", () => {
     await createStatusUpdate(t, { warriorId, updatedBy: accountId, visibility: "public", status: "stable" });
 
     const updates = await t.query(api.status.getRecentUpdates, {});
-    expect(updates).toHaveLength(1);
+    expect(updates).toEqual([]);
   });
 });
 

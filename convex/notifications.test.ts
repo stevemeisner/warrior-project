@@ -308,9 +308,9 @@ describe("createNotification (internal)", () => {
       relatedWarriorId: warriorId,
     });
 
-    expect(notificationId).toBeDefined();
+    expect(notificationId).not.toBeNull();
 
-    const notif = await t.run(async (ctx) => ctx.db.get(notificationId));
+    const notif = await t.run(async (ctx) => ctx.db.get(notificationId!));
     expect(notif!.accountId).toEqual(accountId);
     expect(notif!.type).toBe("statusChange");
     expect(notif!.title).toBe("Status Update");
@@ -319,6 +319,64 @@ describe("createNotification (internal)", () => {
     expect(notif!.relatedWarriorId).toEqual(warriorId);
     expect(notif!.isRead).toBe(false);
     expect(notif!.createdAt).toBeDefined();
+  });
+
+  it("skips the notification when the recipient turned that in-app type off", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId, asUser } = await createAccount(t, { name: "Alice" });
+
+    await asUser.mutation(api.accounts.updateNotificationPreferences, {
+      inAppStatusChanges: false,
+    });
+
+    const notificationId = await t.mutation(internal.notifications.createNotification, {
+      accountId,
+      type: "statusChange",
+      title: "Status Update",
+      message: "Warrior's status changed",
+    });
+
+    expect(notificationId).toBeNull();
+    const rows = await t.run(async (ctx) => ctx.db.query("notifications").collect());
+    expect(rows).toHaveLength(0);
+  });
+
+  it("still delivers a type the recipient did not disable", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId, asUser } = await createAccount(t, { name: "Alice" });
+
+    await asUser.mutation(api.accounts.updateNotificationPreferences, {
+      inAppStatusChanges: false,
+    });
+
+    const notificationId = await t.mutation(internal.notifications.createNotification, {
+      accountId,
+      type: "newMessage",
+      title: "New Message",
+      message: "You have a new message",
+    });
+
+    expect(notificationId).not.toBeNull();
+  });
+
+  it("delivers invite notifications, which have no in-app switch", async () => {
+    const t = convexTest(schema, modules);
+    const { accountId, asUser } = await createAccount(t, { name: "Alice" });
+
+    await asUser.mutation(api.accounts.updateNotificationPreferences, {
+      inAppStatusChanges: false,
+      inAppNewMessages: false,
+      inAppSupportRequests: false,
+    });
+
+    const notificationId = await t.mutation(internal.notifications.createNotification, {
+      accountId,
+      type: "caregiverInvite",
+      title: "Caregiver invitation",
+      message: "A family invited you",
+    });
+
+    expect(notificationId).not.toBeNull();
   });
 
   it("creates notification without optional related fields", async () => {
@@ -332,7 +390,7 @@ describe("createNotification (internal)", () => {
       message: "You have a new message",
     });
 
-    const notif = await t.run(async (ctx) => ctx.db.get(notificationId));
+    const notif = await t.run(async (ctx) => ctx.db.get(notificationId!));
     expect(notif!.relatedAccountId).toBeUndefined();
     expect(notif!.relatedWarriorId).toBeUndefined();
     expect(notif!.relatedConversationId).toBeUndefined();

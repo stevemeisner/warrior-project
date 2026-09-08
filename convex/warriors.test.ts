@@ -378,6 +378,51 @@ describe("getWarriorsByAccount", () => {
 // ─── createWarrior ──────────────────────────────────────────────────────────
 
 describe("createWarrior", () => {
+  it("uses the account's default visibility when none is given", async () => {
+    // Regression: this was hardcoded to "public", so Settings → Privacy →
+    // Default Warrior Visibility had no effect on new warriors.
+    const t = convexTest(schema, modules);
+    const { asUser } = await createAccount(t, { role: "family" });
+
+    await asUser.mutation(api.accounts.updatePrivacySettings, {
+      defaultVisibility: "private",
+    });
+
+    const warriorId = await asUser.mutation(api.warriors.createWarrior, {
+      name: "Quiet Kid",
+    });
+
+    const warrior = await t.run(async (ctx) => ctx.db.get(warriorId));
+    expect(warrior!.visibility).toBe("private");
+
+    // The seeded first status update inherits it too.
+    const updates = await t.run(async (ctx) =>
+      ctx.db
+        .query("statusUpdates")
+        .withIndex("by_warrior", (q) => q.eq("warriorId", warriorId))
+        .collect()
+    );
+    expect(updates).toHaveLength(1);
+    expect(updates[0].visibility).toBe("private");
+  });
+
+  it("an explicit visibility argument still wins over the default", async () => {
+    const t = convexTest(schema, modules);
+    const { asUser } = await createAccount(t, { role: "family" });
+
+    await asUser.mutation(api.accounts.updatePrivacySettings, {
+      defaultVisibility: "private",
+    });
+
+    const warriorId = await asUser.mutation(api.warriors.createWarrior, {
+      name: "Public Kid",
+      visibility: "public",
+    });
+
+    const warrior = await t.run(async (ctx) => ctx.db.get(warriorId));
+    expect(warrior!.visibility).toBe("public");
+  });
+
   it("family account can create a warrior", async () => {
     const t = convexTest(schema, modules);
     const { accountId, asUser } = await createAccount(t, {

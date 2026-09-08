@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -103,7 +104,7 @@ function SettingsContent() {
   const handleUnblock = async (accountId: string) => {
     setUnblockingId(accountId);
     try {
-      await unblockUser({ accountId: accountId as any });
+      await unblockUser({ accountId: accountId as Id<"accounts"> });
       toast.success("User unblocked");
     } catch (error) {
       toast.error("Failed to unblock user");
@@ -210,7 +211,7 @@ function SettingsContent() {
                 currentImageUrl={account.profilePhoto}
                 fallbackText={account.name?.[0]?.toUpperCase() || "?"}
                 onUploadComplete={async (storageId) => {
-                  await updateAccountPhoto({ storageId: storageId as any });
+                  await updateAccountPhoto({ storageId: storageId as Id<"_storage"> });
                 }}
                 size="lg"
               />

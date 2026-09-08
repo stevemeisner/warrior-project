@@ -1,7 +1,8 @@
-import { convexTest } from "convex-test";
+import { convexTest, type TestConvex } from "convex-test";
 import { describe, expect, it, beforeEach } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
+import type { Id } from "./_generated/dataModel";
 import { modules } from "./test.setup";
 import {
   createAccount,
@@ -14,18 +15,20 @@ beforeEach(() => {
   resetFactoryCounter();
 });
 
+type T = TestConvex<typeof schema>;
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-async function makeAdmin(t: ReturnType<typeof convexTest>, accountId: any) {
+async function makeAdmin(t: T, accountId: Id<"accounts">) {
   await t.run(async (ctx) => {
     await ctx.db.patch(accountId, { isAdmin: true });
   });
 }
 
 async function createCommentLike(
-  t: ReturnType<typeof convexTest>,
-  commentId: any,
-  accountId: any,
+  t: T,
+  commentId: Id<"comments">,
+  accountId: Id<"accounts">,
 ) {
   return await t.run(async (ctx) => {
     return await ctx.db.insert("commentLikes", {
@@ -37,9 +40,9 @@ async function createCommentLike(
 }
 
 async function createThreadView(
-  t: ReturnType<typeof convexTest>,
-  threadId: any,
-  accountId: any,
+  t: T,
+  threadId: Id<"threads">,
+  accountId: Id<"accounts">,
 ) {
   return await t.run(async (ctx) => {
     return await ctx.db.insert("threadViews", {

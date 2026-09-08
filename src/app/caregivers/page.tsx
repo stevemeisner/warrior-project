@@ -50,6 +50,78 @@ function PermissionBadge({ level }: { level: PermissionLevel }) {
   );
 }
 
+/** Shape returned by api.caregivers.getMyPendingInvites (see convex/caregivers.ts). */
+interface PendingInvite {
+  _id: Id<"caregivers">;
+  permissions: string;
+  familyAccount: { name: string; profilePhoto?: string } | null;
+}
+
+function ReceivedInvites({
+  invites,
+  onAccept,
+  onDecline,
+}: {
+  invites: PendingInvite[] | undefined;
+  onAccept: (caregiverId: Id<"caregivers">) => void;
+  onDecline: (caregiverId: Id<"caregivers">) => void;
+}) {
+  if (invites === undefined || invites.length === 0) return null;
+
+  return (
+    <section className="space-y-3 mb-8">
+      <p className="section-label">Pending Invitations</p>
+      <div className="space-y-2">
+        {invites.map((invite) => (
+          <Card key={invite._id} className="rounded-2xl border-0 shadow-sm">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-11 w-11">
+                    <AvatarImage src={invite.familyAccount?.profilePhoto} alt="" />
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-sm font-semibold">
+                      {(invite.familyAccount?.name?.[0] ?? "?").toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-heading font-semibold">
+                      {invite.familyAccount?.name ?? "A family"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      invited you as a caregiver
+                    </p>
+                    <div className="mt-1">
+                      <PermissionBadge level={invite.permissions as PermissionLevel} />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    className="rounded-xl"
+                    onClick={() => onAccept(invite._id)}
+                  >
+                    <Check className="h-4 w-4 mr-1" />
+                    Accept
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl"
+                    onClick={() => onDecline(invite._id)}
+                  >
+                    Decline
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function CaregiversContent() {
   const account = useQuery(api.accounts.getCurrentAccount);
   const myCaregivers = useQuery(api.caregivers.getMyCaregivers);
@@ -106,8 +178,9 @@ function CaregiversContent() {
       setIsInviteOpen(false);
       setInviteEmail("");
       setInvitePermission("viewOnly");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to send invitation");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      toast.error(message || "Failed to send invitation");
     } finally {
       setIsInviting(false);
     }
@@ -240,6 +313,15 @@ function CaregiversContent() {
       </GradientHeader>
 
       <ContentPanel>
+        {/* ---- INVITES RECEIVED (any role) ---- */}
+        {/* A family account can be invited as a caregiver too, and the
+            caregiverInvite notification links here — when this lived inside
+            the !isFamily branch those users could never see or accept it. */}
+        <ReceivedInvites
+          invites={pendingInvites}
+          onAccept={handleAccept}
+          onDecline={handleDecline}
+        />
         {/* ---- FAMILY VIEW ---- */}
         {isFamily && (
           <div className="space-y-8">
@@ -366,59 +448,6 @@ function CaregiversContent() {
         {/* ---- CAREGIVER VIEW ---- */}
         {!isFamily && (
           <div className="space-y-8">
-            {/* Pending Invites Received */}
-            {pendingInvites !== undefined && pendingInvites.length > 0 && (
-              <section className="space-y-3">
-                <p className="section-label">Pending Invitations</p>
-                <div className="space-y-2">
-                  {pendingInvites.map((invite) => (
-                    <Card key={invite._id} className="rounded-2xl border-0 shadow-sm">
-                      <CardContent className="pt-4 pb-4">
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-11 w-11">
-                              <AvatarImage src={invite.familyAccount?.profilePhoto} />
-                              <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-sm font-semibold">
-                                {(invite.familyAccount?.name?.[0] ?? "?").toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-heading font-semibold">
-                                {invite.familyAccount?.name ?? "A family"}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                invited you as a caregiver
-                              </p>
-                              <div className="mt-1">
-                                <PermissionBadge level={invite.permissions as PermissionLevel} />
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              className="rounded-xl"
-                              onClick={() => handleAccept(invite._id)}
-                            >
-                              <Check className="h-4 w-4 mr-1" />
-                              Accept
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="rounded-xl"
-                              onClick={() => handleDecline(invite._id)}
-                            >
-                              Decline
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </section>
-            )}
 
             {/* Families I care for */}
             <section className="space-y-3">

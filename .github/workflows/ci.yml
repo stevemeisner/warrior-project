@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Lets you re-run the gate by hand after changing a secret or env var.
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # THE gate that matters most.
+      #
+      # Production deploys run `convex deploy --cmd 'next build'`, and
+      # `convex deploy` typechecks the whole convex/ directory — INCLUDING
+      # convex/*.test.ts — then exits 1 if tsc fails. A single bad type
+      # expression in a test file therefore blocks every production deploy,
+      # silently: Vercel goes red while the last good build keeps serving.
+      # That is what happened between 2026-04-01 and 2026-09-08.
+      # Keep this step first so the failure is unmissable.
+      - name: Typecheck convex functions (blocks prod deploys if broken)
+        run: npm run typecheck:convex
+
+      - name: Typecheck app
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm test
+
+      # `next build` only — deliberately NOT `npm run build`, which is
+      # `convex deploy --cmd 'next build'` and would push functions to a real
+      # Convex deployment from CI.
+      - name: Build
+        run: npx next build
+        env:
+          NEXT_PUBLIC_CONVEX_URL: https://ci-placeholder.convex.cloud
+          NEXT_PUBLIC_APP_URL: http://localhost:3000

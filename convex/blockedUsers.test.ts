@@ -121,7 +121,7 @@ describe("getBlockedUsers", () => {
     const blocked = await alice.query(api.blockedUsers.getBlockedUsers);
     expect(blocked).toHaveLength(2);
 
-    const names = blocked.map((b: any) => b.blockedAccount?.name).sort();
+    const names = blocked.map((b) => b.blockedAccount?.name).sort();
     expect(names).toEqual(["Bob", "Carol"]);
 
     // Each entry should have blockedAccount details
