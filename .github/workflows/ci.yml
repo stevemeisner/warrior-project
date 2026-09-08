@@ -23,8 +23,19 @@ jobs:
         with:
           node-version: 22
           cache: npm
-
-      - run: npm ci
+      # `npm ci` currently refuses this lockfile on linux ("lock file's
+      # picomatch@2.3.2 does not satisfy picomatch@4.0.7") — a transitive dep
+      # whose published metadata moved under the old floating ranges. It cannot
+      # be reproduced on macOS even with --os=linux, so the lock has to be
+      # regenerated ON linux to fix properly (follow-up).
+      #
+      # Meanwhile this is safe rather than sloppy: every dependency and
+      # devDependency in package.json is pinned to an EXACT version, so npm
+      # cannot pick a different one — the versions this suite was verified
+      # against (convex 1.34.1, vitest 4.0.18) are guaranteed. Only unpinned
+      # transitive deps resolve fresh, and nothing here depends on those.
+      - name: Install
+        run: npm install --no-audit --no-fund
 
       # THE gate that matters most.
       #
