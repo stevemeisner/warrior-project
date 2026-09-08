@@ -19,7 +19,7 @@ beforeEach(() => {
 async function insertSupportRequest(
   t: TestConvex<typeof schema>,
   opts: {
-    accountId: Id<"accounts">;
+    accountId: Id<"accountz">;
     warriorId?: Id<"warriors">;
     helpTypes?: string[];
     description?: string;
